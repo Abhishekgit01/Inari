@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athernex — Admin Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#c8d6e5;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(0,229,255,0.1)}
+.header h1{font-size:16px;color:#00e5ff;letter-spacing:2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 24px}
+.card{background:rgba(3,13,26,0.7);border:1px solid rgba(0,229,255,0.08);border-radius:10px;padding:16px}
+.card h3{font-size:11px;color:#00e5ff;margin-bottom:10px;letter-spacing:1px}
+.card input,.card select,.card textarea{width:100%;background:rgba(3,5,15,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;color:#c8d6e5;font-size:11px;margin-bottom:6px;font-family:inherit}
+.card textarea{height:60px;resize:vertical}
+.btn{display:inline-flex;align-items:center;gap:4px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.2);border-radius:6px;padding:5px 12px;color:#00e5ff;font-size:10px;cursor:pointer;font-family:inherit}
+.btn:hover{background:rgba(0,229,255,0.22)}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+#log{background:rgba(0,0,0,0.3);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;font-size:10px;color:#5bc8e8;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="header"><h1>ATHERNEX</h1><span>Admin Dashboard v0.2</span></div>
+<div class="grid">
+  <div class="card">
+    <h3>SIEM CSV IMPORT</h3>
+    <select id="template"><option>splunk</option><option>elastic</option><option>generic</option></select>
+    <input type="file" id="csv-file" accept=".csv"/>
+    <button class="btn" onclick="importCSV()">Import</button>
+    <div id="import-result" style="margin-top:8px;font-size:10px"></div>
+  </div>
+  <div class="card">
+    <h3>WEBHOOK INGEST</h3>
+    <textarea id="wh-payload">[{"host":"WEB-01","type":"brute_force","severity":"critical"}]</textarea>
+    <div class="row"><input id="api-key" placeholder="API Key" style="flex:1"/><button class="btn" onclick="pushWebhook()">Push</button></div>
+    <div id="wh-status" style="margin-top:8px;font-size:10px"></div>
+  </div>
+  <div class="card">
+    <h3>EXPORT</h3>
+    <div class="row">
+      <button class="btn" onclick="exportData('alerts')">Alerts CSV</button>
+      <button class="btn" onclick="exportData('summary')">Summary JSON</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>LOG</h3>
+    <div id="log"></div>
+  </div>
+</div>
+<script>
+const API='';
+function log(m){const el=document.getElementById('log');el.innerHTML+=m+'<br>';el.scrollTop=el.scrollHeight}
+async function importCSV(){const t=document.getElementById('template').value,f=document.getElementById('csv-file').files[0];if(!f){log('No file selected');return}const fd=new FormData();fd.append('siem_file',f);const r=await fetch(API+'/api/siem/import/'+t,{method:'POST',body:fd}).then(r=>r.json());document.getElementById('import-result').textContent=JSON.stringify(r);log('Import: '+r.status)}
+async function pushWebhook(){const p=document.getElementById('wh-payload').value,k=document.getElementById('api-key').value;const r=await fetch(API+'/api/webhooks/ingest',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':k},body:p}).then(r=>r.json());document.getElementById('wh-status').textContent=JSON.stringify(r);log('Webhook: '+r.status)}
+function exportData(t){window.open(API+'/api/export/'+t+'/latest','_blank')}
+</script>
+</body>
+</html>

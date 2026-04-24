@@ -1,0 +1,11 @@
+_time,host,event_type,severity,signature,src_ip,dest_ip,user,action,bytes
+2024-01-15T10:01:00Z,WEB-01,authentication,failed_login,high,brute_force,10.0.10.5,10.0.1.12,admin,failure,0
+2024-01-15T10:01:05Z,WEB-01,authentication,failed_login,high,brute_force,10.0.10.5,10.0.1.12,admin,failure,0
+2024-01-15T10:01:10Z,WEB-01,authentication,failed_login,critical,brute_force,10.0.10.5,10.0.1.12,admin,failure,0
+2024-01-15T10:02:00Z,APP-03,network_connection,lateral_movement,medium,lateral_move,10.0.1.12,10.0.3.15,svc_account,success,2048
+2024-01-15T10:02:30Z,APP-03,network_connection,lateral_movement,high,lateral_move,10.0.3.15,10.0.7.11,svc_account,success,4096
+2024-01-15T10:03:00Z,DB-01,data_transfer,data_exfiltration,critical,exfil,10.0.7.11,10.0.10.99,db_admin,success,5242880
+2024-01-15T10:03:30Z,DB-01,data_transfer,data_exfiltration,critical,exfil,10.0.7.11,10.0.10.99,db_admin,success,10485760
+2024-01-15T10:04:00Z,WS-05,beacon,c2_beacon,medium,c2_callback,10.0.10.5,10.0.10.99,system,success,512
+2024-01-15T10:04:30Z,WS-05,beacon,c2_beacon,medium,c2_callback,10.0.10.5,10.0.10.99,system,success,512
+2024-01-15T10:05:00Z,FW-01,firewall,allowed,low,normal_traffic,10.0.0.1,10.0.1.12,gateway,allowed,1024
