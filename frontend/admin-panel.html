@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Athernex — Admin Panel v0.3</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e17;color:#c8d6e5;font-family:'IBM Plex Mono',monospace;font-size:13px}
+.header{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid rgba(0,229,255,0.1)}
+.header h1{font-size:16px;color:#00e5ff;letter-spacing:2px}
+.header span{font-size:10px;color:#5bc8e8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:20px 24px}
+.card{background:rgba(3,13,26,0.7);border:1px solid rgba(0,229,255,0.08);border-radius:10px;padding:16px}
+.card h3{font-size:11px;color:#00e5ff;margin-bottom:10px;letter-spacing:1px}
+.card input,.card select,.card textarea{width:100%;background:rgba(3,5,15,0.6);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;color:#c8d6e5;font-size:11px;margin-bottom:6px;font-family:inherit}
+.card textarea{height:60px;resize:vertical}
+.btn{display:inline-flex;align-items:center;gap:4px;background:rgba(0,229,255,0.12);border:1px solid rgba(0,229,255,0.2);border-radius:6px;padding:5px 12px;color:#00e5ff;font-size:10px;cursor:pointer;font-family:inherit}
+.btn:hover{background:rgba(0,229,255,0.22)}
+.btn-danger{background:rgba(255,60,60,0.12);border-color:rgba(255,60,60,0.2);color:#ff6b6b}
+.btn-green{background:rgba(0,200,120,0.12);border-color:rgba(0,200,120,0.2);color:#00c878}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+#log{background:rgba(0,0,0,0.3);border-radius:6px;padding:8px;max-height:120px;overflow-y:auto;font-size:10px;color:#5bc8e8;margin-top:8px}
+.connector-item{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border:1px solid rgba(255,255,255,0.05);border-radius:4px;margin-bottom:4px;background:rgba(3,5,15,0.4)}
+.status-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:4px}
+.status-ok{background:#00c878}.status-warn{background:#ffa502}
+</style>
+</head>
+<body>
+<div class="header"><h1>ATHERNEX</h1><span>Admin Panel v0.3 — Connector Management</span></div>
+<div class="grid">
+  <div class="card">
+    <h3>SIEM / XDR CONNECTORS</h3>
+    <div class="row">
+      <select id="vendor"><option>splunk</option><option>sentinel</option><option>crowdstrike</option><option>qradar</option><option>elastic</option></select>
+      <input id="siem-url" placeholder="API URL" style="flex:1"/>
+      <input id="siem-key" placeholder="API Key" style="flex:1"/>
+    </div>
+    <div class="row">
+      <input id="api-key" placeholder="Your API Key (X-API-Key)" style="flex:1"/>
+      <button class="btn" onclick="registerConnector()">Register</button>
+    </div>
+    <div id="connectors" style="margin-top:10px"></div>
+  </div>
+  <div class="card">
+    <h3>WEBHOOK INGEST</h3>
+    <div class="row">
+      <select id="wh-vendor"><option>splunk</option><option>sentinel</option><option>crowdstrike</option><option>generic</option></select>
+    </div>
+    <textarea id="wh-payload">[{"host":"WEB-01","type":"brute_force","severity":"critical"}]</textarea>
+    <button class="btn" onclick="pushWebhook()">Push &amp; Ingest</button>
+    <div id="wh-status" style="margin-top:8px;font-size:10px"></div>
+  </div>
+  <div class="card">
+    <h3>SIEM CSV IMPORT</h3>
+    <select id="template"><option>splunk</option><option>elastic</option><option>generic</option></select>
+    <input type="file" id="csv-file" accept=".csv"/>
+    <button class="btn" onclick="importCSV()">Import</button>
+    <div id="import-result" style="margin-top:8px;font-size:10px"></div>
+  </div>
+  <div class="card">
+    <h3>STATUS &amp; LOG</h3>
+    <div id="status-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px"></div>
+    <div class="row">
+      <button class="btn" onclick="exportData('alerts')">Alerts CSV</button>
+      <button class="btn" onclick="exportData('summary')">Summary JSON</button>
+    </div>
+    <div id="log"></div>
+  </div>
+</div>
+<script>
+const API='';
+function log(m){const el=document.getElementById('log');el.innerHTML+=m+'<br>';el.scrollTop=el.scrollHeight}
+function getKey(){return document.getElementById('api-key').value}
+async function api(p,o={}){const h={'Content-Type':'application/json',...(getKey()?{'X-API-Key':getKey()}:{})};return fetch(API+p,{...o,headers:{...h,...(o.headers||{})}}).then(r=>r.json())}
+async function refreshStatus(){const s=await api('/api/integrations/status');document.getElementById('status-grid').innerHTML=[['SIEM Connectors',`${s.siem_connectors?.active||0}/${s.siem_connectors?.total||0}`],['Webhook Buffer',`${s.webhook?.buffer_size||0}/${s.webhook?.threshold||5}`],['API Keys',s.api_keys?.total||0]].map(([l,v])=>`<div style="font-size:10px;color:#5bc8e8">${l}<div style="font-size:18px;color:#00e5ff">${v}</div></div>`).join('')}
+async function registerConnector(){const v=document.getElementById('vendor').value,u=document.getElementById('siem-url').value,k=document.getElementById('siem-key').value;const r=await api('/api/connectors/siem',{method:'POST',body:JSON.stringify({vendor:v,api_url:u,api_key:k})});log(r.connector_id?`Registered ${r.connector_id} (${r.vendor})`:JSON.stringify(r));refreshConnectors()}
+async function refreshConnectors(){const r=await api('/api/connectors/siem');document.getElementById('connectors').innerHTML=(r.connectors||[]).map(c=>`<div class="connector-item"><span><span class="status-dot status-ok"></span>${c.vendor.toUpperCase()} <span style="color:#5bc8e8;font-size:9px">${c.api_url}</span></span><button class="btn btn-danger" onclick="removeConnector('${c.connector_id}')">Remove</button></div>`).join('')}
+async function removeConnector(id){await api('/api/connectors/siem/'+id,{method:'DELETE'});log('Removed '+id);refreshConnectors()}
+async function pushWebhook(){const v=document.getElementById('wh-vendor').value,p=document.getElementById('wh-payload').value;const r=await api('/api/webhooks/ingest',{method:'POST',body:p,headers:{'Content-Type':'application/json','X-SIEM-Vendor':v}});document.getElementById('wh-status').textContent=JSON.stringify(r);log('Webhook: '+r.status)}
+async function importCSV(){const t=document.getElementById('template').value,f=document.getElementById('csv-file').files[0];if(!f){log('No file selected');return}const fd=new FormData();fd.append('siem_file',f);const r=await fetch(API+'/api/siem/import/'+t,{method:'POST',body:fd}).then(r=>r.json());document.getElementById('import-result').textContent=JSON.stringify(r);log('Import: '+r.status)}
+function exportData(t){window.open(API+'/api/export/'+t+'/latest','_blank')}
+refreshStatus();refreshConnectors();
+</script>
+</body>
+</html>
