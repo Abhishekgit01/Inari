@@ -1,4 +1,4 @@
-"""Athernex Integrations: Webhook listener and SIEM CSV import (v0.2)."""
+"""Athernex Integrations: Webhook listener, SIEM CSV import, connector management (v0.3)."""
 
 from __future__ import annotations
 
@@ -114,3 +114,54 @@ async def export_alerts_csv(simulation_id: str):
         writer.writerow([a.get("id", ""), a.get("threat_type", ""), a.get("severity", ""), a.get("confidence", ""), a.get("affected_hosts", ""), a.get("timestamp", "")])
     output.seek(0)
     return StreamingResponse(io.BytesIO(output.getvalue().encode()), media_type="text/csv", headers={"Content-Disposition": f"attachment; filename=alerts_{simulation_id}.csv"})
+
+
+# ── SIEM Connector Management ───────────────────────────────────────────────
+
+class SIEMConnectorConfig(BaseModel):
+    vendor: str = Field(..., pattern="^(splunk|sentinel|crowdstrike|qradar|elastic)$")
+    api_url: str = Field(...)
+    api_key: str = Field(default="")
+    severity_filter: list[str] = Field(default=["high", "critical"])
+
+_connectors: dict[str, dict[str, Any]] = {}
+
+
+@router.post("/connectors/siem", summary="Register a SIEM/XDR connector")
+async def register_siem_connector(config: SIEMConnectorConfig, x_api_key: str = Header(default="")):
+    _verify_api_key(x_api_key)
+    cid = f"siem-{uuid.uuid4().hex[:8]}"
+    _connectors[cid] = {
+        "connector_id": cid,
+        "vendor": config.vendor,
+        "api_url": config.api_url,
+        "api_key": config.api_key[:4] + "****" if config.api_key else "",
+        "severity_filter": config.severity_filter,
+        "status": "connected",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return {"status": "registered", "connector_id": cid, "vendor": config.vendor}
+
+
+@router.get("/connectors/siem", summary="List registered SIEM connectors")
+async def list_siem_connectors(x_api_key: str = Header(default="")):
+    _verify_api_key(x_api_key)
+    return {"connectors": list(_connectors.values())}
+
+
+@router.delete("/connectors/siem/{connector_id}", summary="Remove a SIEM connector")
+async def remove_siem_connector(connector_id: str, x_api_key: str = Header(default="")):
+    _verify_api_key(x_api_key)
+    if connector_id not in _connectors:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    del _connectors[connector_id]
+    return {"status": "removed", "connector_id": connector_id}
+
+
+@router.get("/integrations/status", summary="Integration status dashboard")
+async def integration_status():
+    return {
+        "siem_connectors": {"total": len(_connectors), "active": sum(1 for c in _connectors.values() if c["status"] == "connected")},
+        "webhook": {"buffer_size": len(_webhook_buffer), "threshold": 5},
+        "api_keys": {"total": len(_api_keys)},
+    }
