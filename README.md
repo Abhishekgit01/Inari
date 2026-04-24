@@ -1,120 +1,239 @@
 # CyberGuardian AI
 
-We built a security system where two AIs - one playing a hacker, one playing a guard - fought each other a million times until both got really smart.
-Now when a real attack happens, the guard AI watches the live camera feeds, spots suspicious patterns across the whole building at once, and puts up a countdown clock showing exactly how much time is left before the hacker reaches the important files.
-It also figures out: which famous hacker group this looks like, and gives the security team a step-by-step plan to stop it.
+Adversarial cybersecurity simulation platform where Red (attacker) and Blue (defender) AI agents train through self-play to detect and respond to cyber threats in real-time.
 
-## The Simple Version
+**Live Demo**: [https://cyberguardian-ai.vercel.app](https://cyberguardian-ai.vercel.app) (Frontend) + Local Backend
 
-Imagine a school building with 20 rooms.
-Some rooms are normal classrooms, some are offices, and a few are the room with the most valuable stuff inside.
+## Quick Start
 
-Now imagine a burglar trying to sneak in, try keys, slip from room to room, and steal the files before anyone notices.
-Our project turns that into a live game:
+### Prerequisites
 
-- The red AI is the burglar.
-- The blue AI is the guard.
-- They practiced against each other a million times.
-- The screen shows the whole building map live, so you can watch the chase happen room by room.
+- **Python 3.11** ([Download](https://www.python.org/downloads/release/python-3110/))
+- **Node.js 20+** ([Download](https://nodejs.org/))
+- **Git**
+
+### 1. Clone & Setup Backend
+
+```bash
+git clone https://github.com/Abhishekgit01/CyberGuardian-AI.git
+cd CyberGuardian-AI
+
+# Create virtual environment
+python3.11 -m venv backend/venv
+
+# Activate (Linux/Mac)
+source backend/venv/bin/activate
+
+# Activate (Windows)
+backend\venv\Scripts\activate
+
+# Install dependencies
+cd backend
+pip install -r requirements.txt
+
+# Start backend
+cd ..
+python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8001
+```
+
+**Backend should now be running at**: `http://localhost:8001`
+
+### 2. Setup Frontend (New Terminal)
+
+```bash
+cd CyberGuardian-AI
+
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+```
+
+**Frontend should now be running at**: `http://localhost:5173`
+
+### 3. Open in Browser
+
+Navigate to `http://localhost:5173` and click "Try Demo" to start the simulation.
+
+## Architecture
+
+```
+┌─────────────────┐     WebSocket/HTTP      ┌─────────────────┐
+│   React Frontend│  ←──────────────────→   │  FastAPI Backend│
+│   (Port 5173)   │                       │   (Port 8001)   │
+└─────────────────┘                       └─────────────────┘
+                                                │
+                    ┌───────────────────────────┼───────────┐
+                    │                           │           │
+            ┌───────▼────────┐        ┌────────▼─────┐   ┌▼──────────┐
+            │  RL Environment│        │  Detection   │   │  Agents   │
+            │  (Gymnasium)   │        │  Pipeline    │   │  (PPO/LLM)│
+            └────────────────┘        └──────────────┘   └───────────┘
+```
+
+## Project Structure
+
+```
+cyberguardian-ai/
+├── backend/
+│   ├── src/
+│   │   ├── api/              # FastAPI routes
+│   │   ├── agents/           # RL agents (Red/Blue)
+│   │   ├── detection/        # Threat detection
+│   │   ├── environment/      # CyberSecurityEnv
+│   │   ├── simulation/       # Log generation
+│   │   └── ...
+│   ├── tests/                # Unit tests
+│   └── venv/                 # Python virtual env
+├── src/
+│   ├── components/           # React components
+│   ├── pages/                # Page components
+│   └── store/                # State management
+├── dist/                     # Built frontend
+└── README.md
+```
+
+## Troubleshooting
+
+### Backend Issues
+
+**Error: `ModuleNotFoundError: No module named 'fastapi'`**
+```bash
+cd backend
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+```
+
+**Error: `ImportError: cannot import name 'CyberSecurityEnv'`**
+Make sure you're running from the project root:
+```bash
+cd /path/to/CyberGuardian-AI
+python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8001
+```
+
+**Backend not responding**
+Check if port 8001 is in use:
+```bash
+lsof -i :8001  # Mac/Linux
+netstat -ano | findstr 8001  # Windows
+```
+Kill existing process or use a different port:
+```bash
+python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8002
+```
+
+### Frontend Issues
+
+**White screen / blank page**
+1. Check backend is running: `curl http://localhost:8001/`
+2. Check browser console (F12) for errors
+3. Try clearing browser cache: Ctrl+Shift+R
+4. Rebuild: `npm run build && npm run preview`
+
+**Error: `Cannot find module '@splinetool/react-spline'`**
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+**Vite not starting / port in use**
+```bash
+# Kill existing vite processes
+pkill -f vite  # Mac/Linux
+taskkill /F /IM node.exe  # Windows
+
+# Or use different port
+npm run dev -- --port 5174
+```
+
+### Connection Issues
+
+**Frontend can't connect to backend**
+1. Check both servers are running
+2. Verify URLs:
+   - Frontend: `http://localhost:5173`
+   - Backend: `http://localhost:8001`
+3. In the app, go to Settings and check "Backend URL"
+4. Try setting to `http://127.0.0.1:8001` instead of `localhost`
 
 ## What You See On Screen
 
 ### Live War Room
 
-- A glowing map of all the computers in the building.
-- Red danger flashes when the burglar is pushing into a room.
-- Blue guard actions when the system locks down, checks, or blocks a machine.
-- A sweeping Threat Radar that lights up the hottest trouble spots.
-- An Intrusion Storyboard that explains the chase as a short visual story.
+- **Network Map**: 20 interconnected nodes showing the cyber battlefield
+- **Red Threats**: Compromised hosts (attacker positions)
+- **Blue Defenses**: Protected/isolated hosts
+- **Threat Radar**: Circular scanner showing hottest danger zones
+- **Kill Chain**: Visual timeline of attack progression
 
-### Breach Countdown
+### Neural Pipeline
 
-- A big countdown clock that answers the question judges care about most:
-  how long until the burglar reaches the safe if nobody stops them?
+Real-time AI decision visualization:
+- **Intent Vector**: What the attacker is trying to do
+- **Drift Detect**: When attack patterns change
+- **Attack Graph**: Shortest path to critical assets
+- **Shadow Branches**: Alternative defense strategies evaluated
 
-### Burglar Route Prediction
+### APT Attribution
 
-- The app draws the likely next path the burglar may take.
-- It highlights the rooms that matter most before the damage happens.
+Identifies which hacker group the attack resembles:
+- Similarity matching against known APT profiles
+- Confidence scoring
+- Historical attack pattern comparison
 
-### Guard Playbook
+## API Endpoints
 
-- When the app catches something bad, it writes a step-by-step response plan.
-- That means the guard team sees what to do next, not just a flashing warning.
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | Health check |
+| `/api/simulation/create` | POST | Create new simulation |
+| `/api/simulation/{id}/step` | POST | Advance one step |
+| `/api/simulation/{id}/reset` | POST | Reset simulation |
+| `/api/detection/alerts` | GET | Get all alerts |
+| `/api/agents/info` | GET | Agent metrics |
+| `/docs` | GET | Swagger UI |
 
-### AI Trust Check
+## Development
 
-- The app also checks whether its own guard AI is being fooled too easily.
-- That matters because a smart alarm is only useful if it does not panic at the wrong things.
-
-## The New Judge-Friendly Features
-
-### 1. Threat Radar
-
-This is a big circular scanner that sweeps around like a movie radar screen.
-Each glowing dot is a computer that looks risky, and the brighter the dot, the hotter the danger.
-
-### 2. Intrusion Storyboard
-
-This turns the attack into a visual comic strip.
-Instead of making judges read raw logs, it shows who moved, what happened, and why it matters.
-
-### 3. Backend Improvement: SIEM Feed Upload Seeding
-
-You can now upload a security feed file and the app uses it to seed the next practice run.
-That means the demo can start from a more realistic "the burglar is already inside" situation instead of always starting from zero.
-
-## Scary Words, Explained Like Real Life
-
-- Brute Force: like trying a giant ring of keys until one opens the door.
-- Lateral Movement: the burglar got into one room and is now tiptoeing to the next.
-- Data Exfiltration: the burglar found the files and is sneaking them out.
-- C2 Beaconing: the burglar's hidden tool is secretly texting its boss to say, "I am still here."
-- False Positive: the alarm went off, but it was just the janitor moving something.
-
-## Why This Project Feels Different
-
-Most security tools act like a notebook of old warnings.
-They tell you what already happened.
-
-CyberGuardian feels more like a live security room in a movie:
-
-- you see the burglar moving,
-- you see the guard reacting,
-- you see which rooms are in danger,
-- and you see how much time is left before the important files are reached.
-
-## How To Run It
-
-### Frontend
+### Running Tests
 
 ```bash
-cd /Abhi/Projects/HACKMALANADU
-npm install
-npm run dev
+cd backend
+source venv/bin/activate
+python -m pytest tests/ -v
 ```
 
-Open the local address shown by Vite.
-
-### Backend
+### Building for Production
 
 ```bash
-cd /Abhi/Projects/HACKMALANADU
-./.venv311/bin/python -m uvicorn backend.src.api.main:app --host 127.0.0.1 --port 8001
+# Frontend
+npm run build
+
+# Serve dist/ folder
+npm run preview
 ```
 
-The app expects the backend at `http://127.0.0.1:8001`.
+## Tech Stack
 
-## Best Demo Flow
+**Backend**
+- FastAPI (async web framework)
+- Gymnasium (RL environments)
+- Stable-Baselines3 (PPO agents)
+- NetworkX (graph analysis)
+- NumPy/Pandas (data processing)
 
-1. Open `/live`.
-2. Show the building map and explain that red is the burglar and blue is the guard.
-3. Point at the Threat Radar and Intrusion Storyboard.
-4. Step the practice run forward and show the countdown clock.
-5. Open the attack path and response plan pages to show prediction plus action.
+**Frontend**
+- React 19 + TypeScript
+- Vite (build tool)
+- Three.js (3D visualization)
+- Spline (3D scenes)
+- TailwindCSS (styling)
 
-## 30-Second Judge Pitch
+## License
 
-"Imagine a building with 20 rooms and one burglar trying to reach the safe.
-We trained one AI to play the burglar and another AI to play the guard a million times, so now the guard has seen almost every trick before.
-Instead of showing boring logs after the damage is done, our app shows the attack live, predicts where the burglar goes next, tells you how much time is left, and gives the team a clear plan to stop it."
+MIT License - see LICENSE file for details.
+
+## 30-Second Pitch
+
+"Imagine a building with 20 rooms and one burglar trying to reach the safe. We trained one AI to play the burglar and another AI to play the guard a million times, so now the guard has seen almost every trick before. Instead of showing boring logs after the damage is done, our app shows the attack live, predicts where the burglar goes next, tells you how much time is left, and gives the team a clear plan to stop it."
