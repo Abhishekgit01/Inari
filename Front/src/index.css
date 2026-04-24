@@ -1,0 +1,74 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-surface: #111417;
+  --color-surface-container-low: #191c1f;
+  --color-surface-container-high: #282a2e;
+  --color-surface-container-highest: #323539;
+  --color-surface-container-lowest: #0c0e12;
+  --color-surface-variant: #323539;
+  --color-surface-dim: #111417;
+  --color-surface-bright: #37393d;
+
+  --color-primary: #b0c6ff;
+  --color-primary-container: #568dff;
+  --color-on-primary: #002d6f;
+  --color-on-primary-container: #002661;
+
+  --color-secondary: #a6e6ff;
+  --color-secondary-container: #14d1ff;
+  --color-on-secondary: #003543;
+  --color-on-secondary-container: #00566b;
+
+  --color-tertiary: #ceca7c;
+  --color-on-surface: #e1e2e7;
+  --color-on-surface-variant: #c2c6d8;
+  --color-outline: #8c90a1;
+  --color-outline-variant: #424655;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-slate-900 font-sans antialiased;
+  }
+
+  .dark body {
+    @apply bg-surface text-on-surface;
+  }
+}
+
+@layer components {
+  .sentinel-gradient {
+    background: radial-gradient(circle at 0% 0%, #00429c 0%, #111417 50%);
+    opacity: 0.15;
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .glass-card {
+    background: rgba(50, 53, 57, 0.3);
+    backdrop-filter: blur(24px);
+  }
+
+  .ghost-border {
+    outline: 1px solid rgba(140, 144, 161, 0.15);
+  }
+
+  .glowing-border {
+    border: 1px solid #14d1ff;
+    box-shadow: 0 0 8px rgba(20, 209, 255, 0.4);
+  }
+
+  .repello-nav-glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  }
+}
