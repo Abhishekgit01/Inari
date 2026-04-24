@@ -10,3 +10,6 @@ gymnasium
 stable-baselines3
 pandas
 numpy
+slowapi
+structlog
+pytest

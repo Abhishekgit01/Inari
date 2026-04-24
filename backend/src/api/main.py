@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import logging
 import os
 import re
 import struct
@@ -12,9 +13,16 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile, WebSocket, WebSocketDisconnect
+import structlog
+from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded as SlowAPIRateLimitExceeded
+from slowapi.util import get_remote_address
+
+from .exceptions import CyberGuardianException, SimulationNotFound, InvalidParameter
 
 from .routes.giskard import router as giskard_router
 from .visuals import (
@@ -43,9 +51,9 @@ from ..pipeline.threat_dna import format_apt_attribution
 
 
 class CreateSimulationRequest(BaseModel):
-    num_hosts: int = 20
-    max_steps: int = 100
-    scenario: str = "hard"
+    num_hosts: int = Field(default=20, ge=5, le=100, description="Number of hosts in the network (5-100)")
+    max_steps: int = Field(default=100, ge=10, le=1000, description="Maximum simulation steps (10-1000)")
+    scenario: str = Field(default="hard", description="Difficulty scenario: easy, medium, hard, expert")
 
 
 class PlaybookRequest(BaseModel):
@@ -115,8 +123,63 @@ async def lifespan(app: FastAPI):
     print("Shutting down...")
 
 
-app = FastAPI(title="Inari Visual API", lifespan=lifespan)
+# ── Structured Logging Setup ──────────────────────────────────────────────
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.ConsoleRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+logger = structlog.get_logger()
+
+# ── Rate Limiter ────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
+
+app = FastAPI(
+    title="CyberGuardian AI API",
+    description="""Adversarial cybersecurity simulation platform.
+
+    ## Key Features
+    - Red vs Blue AI agent training
+    - Real-time threat detection
+    - Kill chain analysis
+    - APT attribution
+    - Cross-layer correlation
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+)
+app.state.limiter = limiter
 app.include_router(giskard_router)
+app.add_exception_handler(SlowAPIRateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+# ── Custom Exception Handler ───────────────────────────────────────────────
+@app.exception_handler(CyberGuardianException)
+async def cyberguardian_exception_handler(request: Request, exc: CyberGuardianException):
+    logger.error("api_error", code=exc.code, detail=exc.detail, path=str(request.url))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": exc.code, "detail": exc.detail}},
+    )
+
+
+# ── Security Headers Middleware ─────────────────────────────────────────────
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -526,7 +589,7 @@ def _create_session(num_hosts: int, max_steps: int, scenario: str, simulation_id
 def _get_session(simulation_id: str) -> dict[str, Any]:
     session = app_state["active_simulations"].get(simulation_id)
     if session is None:
-        raise HTTPException(status_code=404, detail="Simulation not found")
+        raise SimulationNotFound(detail=f"Simulation '{simulation_id}' not found")
     return session
 
 
@@ -687,8 +750,14 @@ async def upload_siem_feed(siem_file: UploadFile = File(...)):
     }
 
 
-@app.post("/api/simulation/create")
-async def create_simulation(body: CreateSimulationRequest | None = None):
+@app.post(
+    "/api/simulation/create",
+    summary="Create new simulation",
+    description="Create a new adversarial simulation with configurable parameters.",
+    responses={200: {"description": "Simulation created"}, 422: {"description": "Invalid parameters"}, 429: {"description": "Rate limit exceeded"}},
+)
+@limiter.limit("10/minute")
+async def create_simulation(request: Request, body: CreateSimulationRequest | None = None):
     body = body or CreateSimulationRequest()
     session = _create_session(body.num_hosts, body.max_steps, body.scenario)
     return _serialize(
@@ -708,14 +777,16 @@ async def start_simulation(simulation_id: str):
     return {"status": "started", "message": f"Simulation {session['episode_id']} armed for live control."}
 
 
-@app.post("/api/simulation/{simulation_id}/step")
-async def step_simulation(simulation_id: str):
+@app.post("/api/simulation/{simulation_id}/step", summary="Advance simulation by one step")
+@limiter.limit("30/minute")
+async def step_simulation(request: Request, simulation_id: str):
     session = _get_session(simulation_id)
     return _serialize(_advance_simulation(session))
 
 
-@app.post("/api/simulation/{simulation_id}/reset")
-async def reset_simulation(simulation_id: str):
+@app.post("/api/simulation/{simulation_id}/reset", summary="Reset simulation to initial state")
+@limiter.limit("10/minute")
+async def reset_simulation(request: Request, simulation_id: str):
     old_session = _get_session(simulation_id)
     scenario = old_session["scenario"]
     max_steps = old_session["env"].max_steps
