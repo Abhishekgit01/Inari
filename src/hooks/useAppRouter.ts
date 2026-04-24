@@ -41,9 +41,10 @@ const normalizeRoute = (value: string): AppRoute => {
 const ROUTE_CHANGE_EVENT = 'cg:routechange';
 
 export function useAppRouter() {
-  const [route, setRoute] = useState<AppRoute>(normalizeRoute(window.location.pathname));
+  const [route, setRoute] = useState<AppRoute>('/');
 
   useEffect(() => {
+    setRoute(normalizeRoute(window.location.pathname));
     const sync = () => setRoute(normalizeRoute(window.location.pathname));
     // Listen to both browser back/forward AND our custom navigate events
     window.addEventListener('popstate', sync);

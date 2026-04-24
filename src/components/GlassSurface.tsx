@@ -206,6 +206,14 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
     return CSS.supports('backdrop-filter', 'blur(10px)');
   };
 
+  const [backdropFilterSupported, setBackdropFilterSupported] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setBackdropFilterSupported(supportsBackdropFilter());
+    setMounted(true);
+  }, []);
+
   const getContainerStyles = (): React.CSSProperties => {
     const baseStyles: React.CSSProperties = {
       ...style,
@@ -216,8 +224,14 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
       '--glass-saturation': saturation
     } as React.CSSProperties;
 
-    const backdropFilterSupported = supportsBackdropFilter();
-
+    // During hydration, return a stable style that matches what the server likely rendered
+    if (!mounted) {
+      return {
+        ...baseStyles,
+        background: 'rgba(0, 0, 0, 0.4)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+      };
+    }
     if (svgSupported) {
       return {
         ...baseStyles,

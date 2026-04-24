@@ -3,7 +3,7 @@
 import sys
 import pytest
 
-sys.path.insert(0, "/Abhi/Projects/HACKMALANADU/backend")
+sys.path.insert(0, "/Abhi/Projects/Athernex/backend")
 
 from src.environment.cyber_env import CyberSecurityEnv
 from src.detection.correlator import CrossLayerCorrelator

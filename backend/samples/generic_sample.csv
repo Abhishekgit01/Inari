@@ -1,0 +1,6 @@
+timestamp,host,type,severity,source,target,threat_type,alert_score
+2024-01-15T10:01:00Z,DMZ-01,authentication,high,10.0.10.5,10.0.0.11,brute_force,0.72
+2024-01-15T10:01:05Z,DMZ-01,authentication,critical,10.0.10.5,10.0.0.11,brute_force,0.85
+2024-01-15T10:02:00Z,APP-03,network,medium,10.0.1.12,10.0.3.15,lateral_movement,0.65
+2024-01-15T10:03:00Z,DB-01,data_transfer,critical,10.0.7.11,10.0.10.99,data_exfiltration,0.91
+2024-01-15T10:04:00Z,WS-05,beacon,medium,10.0.10.5,10.0.10.99,c2_beacon,0.55

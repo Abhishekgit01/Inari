@@ -23,7 +23,7 @@ Unlike traditional SIEMs that show logs after breaches, Inari shows attacks as t
 ## 2. PROJECT STRUCTURE
 
 ```
-/Abhi/Projects/HACKMALANADU/
+/Abhi/Projects/Athernex/
 ├── src/
 │   ├── components/
 │   │   ├── ops/                    # Operational components
@@ -769,7 +769,7 @@ python --version  # Need 3.9+
 
 ### 8.2 Frontend Only (Mock Mode)
 ```bash
-cd /Abhi/Projects/HACKMALANADU
+cd /Abhi/Projects/Athernex
 npm install
 npm run dev
 
@@ -781,12 +781,12 @@ npm run dev
 ### 8.3 With Backend (Full Simulation)
 ```bash
 # Terminal 1: Backend
-cd /Abhi/Projects/HACKMALANADU/backend
+cd /Abhi/Projects/Athernex/backend
 pip install -r requirements.txt
 python -m src.api.main
 
 # Terminal 2: Frontend
-cd /Abhi/Projects/HACKMALANADU
+cd /Abhi/Projects/Athernex
 npm run dev
 
 # Browser: http://localhost:5173

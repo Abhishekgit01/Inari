@@ -57,7 +57,11 @@ const readStoredAuth = (): StoredAuth | null => {
 function App() {
   const { navigate, route } = useAppRouter();
   const { isConnected, maxSteps, simulationId, startSimulation, step } = useSimulationStore();
-  const [authIdentity, setAuthIdentity] = useState<StoredAuth | null>(() => readStoredAuth());
+  const [authIdentity, setAuthIdentity] = useState<StoredAuth | null>(null);
+
+  useEffect(() => {
+    setAuthIdentity(readStoredAuth());
+  }, []);
 
   const isAuthenticated = Boolean(authIdentity?.token);
 

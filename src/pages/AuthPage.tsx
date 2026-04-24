@@ -70,7 +70,7 @@ export function AuthPage({ onAuthenticated, onBack }: AuthPageProps) {
               <select className="ops-input" onChange={(event) => setWorkspace(event.target.value)} value={workspace}>
                 <option value="SOC-01">SOC-01</option>
                 <option value="SOC-Blue">SOC-BLUE</option>
-                <option value="HackMalenadu">HACK MALENADU DEMO</option>
+                <option value="Athernex">Athernex DEMO</option>
               </select>
             </label>
 

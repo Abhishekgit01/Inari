@@ -157,13 +157,13 @@ Now the guard can spot trouble faster, predict the burglar's next move, show the
 ## Run Commands
 
 ```bash
-cd /Abhi/Projects/HACKMALANADU
+cd /Abhi/Projects/Athernex
 npm install
 npm run dev
 ```
 
 ```bash
-cd /Abhi/Projects/HACKMALANADU
+cd /Abhi/Projects/Athernex
 ./.venv311/bin/python -m uvicorn backend.src.api.main:app --host 127.0.0.1 --port 8001
 ```
 

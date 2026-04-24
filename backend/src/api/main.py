@@ -25,6 +25,7 @@ from slowapi.util import get_remote_address
 from .exceptions import CyberGuardianException, SimulationNotFound, InvalidParameter
 
 from .routes.giskard import router as giskard_router
+from .integrations import router as integrations_router
 from .visuals import (
     BLUE_ACTION_COSTS,
     build_alerts,
@@ -157,6 +158,7 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.include_router(giskard_router)
+app.include_router(integrations_router)
 app.add_exception_handler(SlowAPIRateLimitExceeded, _rate_limit_exceeded_handler)
 
 
