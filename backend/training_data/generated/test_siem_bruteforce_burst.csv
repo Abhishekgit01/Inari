@@ -1,0 +1,13 @@
+host,type,severity,score,layer,source_ip,dest_port,protocol
+DMZ-01,failed_login,high,0.86,network,10.0.0.55,22,TCP
+10.0.0.12,Brute Force,critical,0.92,endpoint,10.0.0.55,22,SSH
+HOST-02,credential_stuffing,high,0.81,application,10.0.0.55,443,HTTPS
+APP-01,auth,medium,0.66,application,10.0.0.55,443,HTTPS
+10.0.0.12,FAILED_LOGIN,high,0.88,network,10.0.0.55,22,TCP
+DMZ-01,scan,low,0.41,network,10.0.0.55,80,HTTP
+APP-01,failed_login,high,0.84,endpoint,10.0.0.55,3389,RDP
+APP-02,failed_login,medium,0.58,endpoint,10.0.0.55,3389,RDP
+APP-03,failed_login,high,0.83,endpoint,10.0.0.55,3389,RDP
+WS-01,failed_login,medium,0.62,application,10.0.0.55,445,SMB
+WS-02,failed_login,high,0.79,application,10.0.0.55,445,SMB
+APP-02,brute_force,critical,0.94,network,10.0.0.55,22,SSH

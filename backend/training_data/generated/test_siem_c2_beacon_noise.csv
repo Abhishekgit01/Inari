@@ -1,0 +1,8 @@
+host,type,severity,score,layer,source_ip,dest_port,protocol
+WS-06,c2,medium,0.55,network,10.0.10.16,80,HTTP
+WS-06,beacon,high,0.71,network,10.0.10.16,443,HTTPS
+WS-06,c2_beacon,high,0.73,endpoint,10.0.10.16,443,TLS
+WS-06,callback,medium,0.63,application,10.0.10.16,80,HTTP
+WS-05,scan,low,0.22,network,10.0.10.15,80,HTTP
+WS-07,scheduled_task,low,0.15,endpoint,10.0.10.17,0,NA
+WS-06,c2_beacon,critical,0.89,network,10.0.10.16,8080,HTTP

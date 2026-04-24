@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+websockets
+python-multipart
+python-dotenv
+sqlalchemy
+networkx
+pydantic
+gymnasium
+stable-baselines3
+pandas
+numpy
+tensorboard
