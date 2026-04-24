@@ -5,6 +5,7 @@ import {
   ClipboardList,
   GitBranch,
   Layers3,
+  Plug,
   Radio,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -12,7 +13,7 @@ import type { AppRoute } from '../../hooks/useAppRouter';
 
 type ProductRoute = Extract<
   AppRoute,
-  '/live' | '/simulation' | '/pipeline' | '/attack-graph' | '/playbooks' | '/training'
+  '/live' | '/simulation' | '/pipeline' | '/attack-graph' | '/playbooks' | '/training' | '/integrations'
 >;
 
 const navItems: Array<{ route: ProductRoute; label: string; icon: LucideIcon }> = [
@@ -22,6 +23,7 @@ const navItems: Array<{ route: ProductRoute; label: string; icon: LucideIcon }> 
   { route: '/attack-graph', label: 'Attack Graph', icon: GitBranch },
   { route: '/playbooks', label: 'Playbooks', icon: ClipboardList },
   { route: '/training', label: 'Training', icon: ChartColumn },
+  { route: '/integrations', label: 'Integrations', icon: Plug },
 ];
 
 interface ProductSidebarProps {

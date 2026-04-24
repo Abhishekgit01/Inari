@@ -15,6 +15,7 @@ import { FeaturesPage } from './pages/FeaturesPage';
 import { TechnologyPage } from './pages/TechnologyPage';
 import { BlogsPage } from './pages/BlogsPage';
 import { AboutPage } from './pages/AboutPage';
+import { IntegrationsPage } from './pages/IntegrationsPage';
 import { useSimulationStore } from './store/simulationStore';
 
 const PRODUCT_ROUTES = [
@@ -24,7 +25,8 @@ const PRODUCT_ROUTES = [
   '/attack-graph',
   '/playbooks',
   '/training',
- ] as const satisfies readonly AppRoute[];
+  '/integrations',
+] as const satisfies readonly AppRoute[];
 type ProductRoute = (typeof PRODUCT_ROUTES)[number];
 
 const AUTH_STORAGE_KEY = 'cg_auth';
@@ -246,6 +248,8 @@ function renderRoute(route: ProductRoute) {
       return <PlaybooksPage />;
     case '/training':
       return <TrainingPage />;
+    case '/integrations':
+      return <IntegrationsPage />;
     default:
       return <LivePage />;
   }

@@ -13,6 +13,7 @@ export type AppRoute =
   | '/training'
   | '/features'
   | '/technology'
+  | '/integrations'
   | '/blogs'
   | '/about';
 
@@ -29,6 +30,7 @@ const VALID_ROUTES = new Set<AppRoute>([
   '/training',
   '/features',
   '/technology',
+  '/integrations',
   '/blogs',
   '/about',
 ]);
