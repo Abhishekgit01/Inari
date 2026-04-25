@@ -1,6 +1,8 @@
-import { Download, FileText, Printer, ShieldAlert } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Download, FileText, Printer, ShieldAlert, Sparkles, AlertTriangle, CheckCircle, Activity } from 'lucide-react';
 import { SiteNavbar } from '../components/SiteNavbar';
 import { FrostGlass } from '../components/FrostGlass';
+import { apiClient } from '../api/client';
 import {
   ATTACK_REPORT_DATE,
   ATTACK_REPORT_INTRO,
@@ -11,18 +13,44 @@ import {
 } from '../content/attackReport';
 import { useSimulationStore } from '../store/simulationStore';
 
+interface NarrativeData {
+  summary: string;
+  kill_chain: string;
+  recommendations: string[];
+  threat_actor: string;
+  is_ai_generated: boolean;
+}
+
 export function ThreatReportPage() {
-  const { simulationId } = useSimulationStore();
+  const { simulationId: storeId } = useSimulationStore();
+  const [activeSimId, setActiveSimId] = useState<string | null>(null);
+  const [narrative, setNarrative] = useState<NarrativeData | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const querySimId = params.get('simId');
+    const id = querySimId || storeId;
+    setActiveSimId(id);
+
+    if (id) {
+      setLoading(true);
+      apiClient.get(`/api/simulation/${id}/narrative`)
+        .then(res => setNarrative(res.data))
+        .catch(err => console.error('Failed to fetch narrative:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [storeId]);
 
   const downloadReport = () => {
     const { network, logs, scoreboard } = useSimulationStore.getState();
     
     let content = '';
-    if (!simulationId) {
+    if (!activeSimId) {
       content = buildAttackReportMarkdown();
     } else {
       content += `# Inari Live Simulation Threat Report\n\n`;
-      content += `**Simulation ID:** ${simulationId}\n`;
+      content += `**Simulation ID:** ${activeSimId}\n`;
       content += `**Date:** ${new Date().toISOString()}\n\n`;
       
       content += `## Current Network State\n\n`;
@@ -51,7 +79,7 @@ export function ThreatReportPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = simulationId ? `inari-threat-report-${simulationId}.txt` : 'athernex-enterprise-attack-surface-field-report.txt';
+    link.download = activeSimId ? `inari-threat-report-${activeSimId}.txt` : 'athernex-enterprise-attack-surface-field-report.txt';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -86,11 +114,55 @@ export function ThreatReportPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2.2fr) minmax(280px, 1fr)', gap: 24, alignItems: 'start' }}>
           <FrostGlass padding="32px" style={{ minHeight: '100%' }}>
-            {ATTACK_REPORT_INTRO.map((paragraph) => (
-              <p key={paragraph} style={{ margin: '0 0 18px', color: '#d5dbe7', fontSize: 17, lineHeight: 1.9 }}>
-                {paragraph}
-              </p>
-            ))}
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 16 }}>
+                <Activity className="animate-spin" size={32} color="#14d1ff" />
+                <div style={{ color: '#8fe7ff', fontSize: 13, fontFamily: '"IBM Plex Mono", monospace' }}>GENERATING AI FORENSIC NARRATIVE...</div>
+              </div>
+            ) : narrative ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <Sparkles size={18} color="#00ff88" />
+                    <h3 style={{ margin: 0, fontSize: 18, color: '#00ff88', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Executive Summary</h3>
+                  </div>
+                  <p style={{ margin: 0, color: '#d5dbe7', fontSize: 17, lineHeight: 1.9 }}>{narrative.summary}</p>
+                </div>
+
+                <div style={{ padding: 24, borderRadius: 16, background: 'rgba(255,102,0,0.04)', border: '1px solid rgba(255,102,0,0.12)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <AlertTriangle size={18} color="#ff6600" />
+                    <h3 style={{ margin: 0, fontSize: 18, color: '#ff6600', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Kill Chain Analysis</h3>
+                  </div>
+                  <p style={{ margin: 0, color: '#d9dfeb', fontSize: 16, lineHeight: 1.8 }}>{narrative.kill_chain}</p>
+                  <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 12, color: '#7f8ba3' }}>Identified Threat Actor:</span>
+                    <span style={{ fontSize: 12, color: '#ffcc00', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{narrative.threat_actor}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                    <CheckCircle size={18} color="#14d1ff" />
+                    <h3 style={{ margin: 0, fontSize: 18, color: '#14d1ff', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Recommended Remediation</h3>
+                  </div>
+                  <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {narrative.recommendations.map((rec, idx) => (
+                      <li key={idx} style={{ display: 'flex', gap: 12, color: '#b7c2d4', fontSize: 15, lineHeight: 1.6 }}>
+                        <span style={{ color: '#14d1ff' }}>0{idx + 1}.</span>
+                        {rec}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              ATTACK_REPORT_INTRO.map((paragraph) => (
+                <p key={paragraph} style={{ margin: '0 0 18px', color: '#d5dbe7', fontSize: 17, lineHeight: 1.9 }}>
+                  {paragraph}
+                </p>
+              ))
+            )}
           </FrostGlass>
 
           <FrostGlass padding="24px" style={{ position: 'sticky', top: 120 }}>
@@ -119,7 +191,7 @@ export function ThreatReportPage() {
               }}
             >
               <Download size={16} />
-              {simulationId ? 'Download Live Simulation Report' : 'Download Generic Info Report'}
+              {activeSimId ? 'Download Live Simulation Report' : 'Download Generic Info Report'}
             </button>
             <button
               onClick={() => window.print()}

@@ -96,7 +96,13 @@ export function LivePage() {
     link.click();
     URL.revokeObjectURL(url);
   };
-  const handleNarrativeReport = () => { window.open('/threat-report', '_blank'); };
+  const handleNarrativeReport = () => {
+    if (simulationId) {
+      window.open(`/threat-report?simId=${simulationId}`, '_blank');
+    } else {
+      window.open('/threat-report', '_blank');
+    }
+  };
   const handleSIEMUpload = async () => {
     const file = fileInputRef.current?.files?.[0];
     if (!file) return;
