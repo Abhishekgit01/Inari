@@ -1,8 +1,8 @@
 [
   {
     "status": "connected",
-    "last_poll": "2026-04-25T02:51:29.468964+00:00",
-    "events_ingested": 5882,
+    "last_poll": "2026-04-25T02:54:53.307816+00:00",
+    "events_ingested": 5924,
     "last_poll_status": "success",
     "last_error": null,
     "polling_state": "idle",
@@ -18,8 +18,10 @@
     "connector_id": "SIEM-SPLUNK-f69509",
     "created_at": "2026-04-24T16:41:45.633670+00:00",
     "last_bridge": {
-      "bridged": false,
-      "reason": "no_active_session"
+      "bridged": true,
+      "simulation_id": "9fb95e04-f727-45fc-858e-cfcbf3fbdb9c",
+      "alerts_created": 14,
+      "event_count": 14
     }
   }
 ]

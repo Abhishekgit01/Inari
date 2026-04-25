@@ -86,7 +86,24 @@ export function LivePage() {
       content += `## Scoreboard\n- Red Nodes Controlled: ${scoreboard.red_nodes_controlled}\n- Blue Nodes Secured: ${scoreboard.blue_nodes_secured}\n- Contested Nodes: ${scoreboard.contested_nodes}\n\n`;
     }
     if (logs?.length) {
-      content += `## Incident Logs\n` + logs.map(l => `[Step ${l.step}] ${l.team.toUpperCase()}: ${l.message}`).join('\n') + '\n';
+      const redActions = logs.filter(l => l.team === 'red' && l.message.includes('landed on'));
+      const blueActions = logs.filter(l => l.team === 'blue' && l.message.includes('executed for'));
+      
+      content += `## Tactical Attack Timeline (Successful Breaches)\n`;
+      if (redActions.length) {
+        content += redActions.map(l => `[Step ${l.step}] EXPLOIT: ${l.message}`).join('\n') + '\n\n';
+      } else {
+        content += `No critical breaches detected in current observation window.\n\n`;
+      }
+
+      content += `## Defensive Response Summary\n`;
+      if (blueActions.length) {
+        content += blueActions.map(l => `[Step ${l.step}] DEFENSE: ${l.message}`).join('\n') + '\n\n';
+      } else {
+        content += `No automated defensive maneuvers recorded.\n\n`;
+      }
+
+      content += `## Raw Transactional Incident Logs\n` + logs.map(l => `[Step ${l.step}] ${l.team.toUpperCase()}: ${l.message}`).join('\n') + '\n';
     }
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
