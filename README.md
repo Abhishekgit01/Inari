@@ -34,6 +34,12 @@ Managing simulation states, node orchestration, and LLM integrations.
 - **Docker SDK** for local container lifecycle management
 - **NVIDIA API / OpenAI / Anthropic** LLM integrations for report generation
 
+### Research & References
+CyberGuardian's simulation and defense logic draws inspiration from the following research:
+- **PPO Algorithms**: [Proximal Policy Optimization](https://arxiv.org/abs/1707.06347) (Schulman et al.)
+- **Cyber-SOPs**: [Intelligence-Driven Response](https://arxiv.org/pdf/2603.19461)
+- **RL for Security**: [Deep Reinforcement Learning for Cyber Security](https://www.scitepress.org/papers/2018/66398/66398.pdf)
+
 ## Setup & Execution (Linux / Arch)
 
 To run the CyberGuardian environment locally:

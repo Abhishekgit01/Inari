@@ -1,8 +1,8 @@
 [
   {
     "status": "connected",
-    "last_poll": "2026-04-25T00:53:37.326896+00:00",
-    "events_ingested": 4412,
+    "last_poll": "2026-04-25T01:02:40.192680+00:00",
+    "events_ingested": 4524,
     "last_poll_status": "success",
     "last_error": null,
     "polling_state": "idle",
@@ -19,7 +19,7 @@
     "created_at": "2026-04-24T16:41:45.633670+00:00",
     "last_bridge": {
       "bridged": true,
-      "simulation_id": "9c5f1010-d4b8-4646-8d9e-7c6e87fed9a0",
+      "simulation_id": "07e9b1bb-ae9a-437c-94fb-50d9b9f9b08f",
       "alerts_created": 0,
       "event_count": 14
     }
