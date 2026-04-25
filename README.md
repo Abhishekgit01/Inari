@@ -1,6 +1,6 @@
 # CyberGuardian by Inari (Athernex Hackathon)
 
-![Landing Page](public/screenshots/landing_page_1777069272386.png)
+![Landing Hero](public/screenshots/landing_hero_new.png)
 
 CyberGuardian is a live, interpretable AI-driven cyber defense platform built for the **Athernex Hackathon** by team **Inari**. It visualizes sophisticated network attacks, evaluates threat actors' intent, estimates breach pressure across security zones, and generates autonomous response recommendations—all rendered in a high-fidelity, real-time command console.
 
