@@ -1,8 +1,8 @@
 [
   {
     "status": "connected",
-    "last_poll": "2026-04-25T01:02:40.192680+00:00",
-    "events_ingested": 4524,
+    "last_poll": "2026-04-25T01:03:47.970437+00:00",
+    "events_ingested": 4538,
     "last_poll_status": "success",
     "last_error": null,
     "polling_state": "idle",
