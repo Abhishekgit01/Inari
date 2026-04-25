@@ -54,7 +54,7 @@ interface SocEntry {
   id: string;
   lineNum: number;
   timestamp: string;
-  layer: 'NET' | 'EP' | 'APP' | 'CORR' | 'SYS' | 'ALERT';
+  layer: 'NET' | 'EP' | 'APP' | 'CORR' | 'SYS' | 'ALERT' | 'HYPER';
   raw: string;
   severity?: 'critical' | 'high' | 'medium' | 'low';
   isAlert?: boolean;
@@ -127,7 +127,9 @@ export function SocTerminal() {
   const lineRef = useRef(1);
   const lastStepRef = useRef(0);
   const scenarioIdx = useRef(0);
-  const [filter, setFilter] = useState<'all' | 'NET' | 'EP' | 'APP' | 'alerts'>('all');
+  const [filter, setFilter] = useState<'all' | 'NET' | 'EP' | 'APP' | 'HYPER' | 'alerts'>('all');
+  const hyperWsRef = useRef<WebSocket | null>(null);
+  const hyperIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Count alerts by severity
   const counts = useMemo(() => {
@@ -140,7 +142,7 @@ export function SocTerminal() {
         else low++;
       }
     }
-    return { critical, high, medium, low, total: entries.length };
+    return { critical, high, medium, low, total: entries.length, hyper: entries.filter(e => e.layer === 'HYPER').length };
   }, [entries]);
 
   // Auto-scroll
@@ -409,6 +411,69 @@ export function SocTerminal() {
     }
   }, [step, logs, alerts, buildNetworkLog, buildEndpointLog, buildAppLog, buildSocAction, buildTechnicalError, buildCorrEntry, buildAlertBlock, buildFPBlock]);
 
+  /* ── HyperAgent WebSocket ────────────────────────────────────────── */
+
+  useEffect(() => {
+    if (!isConnected) return;
+    const apiBase = useSimulationStore.getState().apiBaseUrl;
+    const wsUrl = apiBase.replace(/^http/, 'ws') + '/api/hyper/ws/live';
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+      hyperWsRef.current = ws;
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ command: 'status' }));
+        hyperIntervalRef.current = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ command: 'status' }));
+          }
+        }, 10000);
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          const ln = lineRef.current++;
+          let html = '';
+          if (data.type === 'hyper_status') {
+            html = [
+              `<span class="v-flag" style="color:#a855f7;font-weight:700">[META-STATUS]</span>`,
+              ` <span class="k">red_score=</span><span class="v-critical">${data.red?.current_score?.toFixed?.(2) ?? '—'}</span>`,
+              ` <span class="sep">│</span> `,
+              `<span class="k">blue_score=</span><span class="v-ip">${data.blue?.current_score?.toFixed?.(2) ?? '—'}</span>`,
+              ` <span class="sep">│</span> `,
+              `<span class="k">mods=</span><span class="v-num">${(data.red?.modifications_this_episode ?? 0) + (data.blue?.modifications_this_episode ?? 0)}</span>`,
+            ].join('');
+          } else if (data.type === 'meta_reflection') {
+            html = [
+              `<span class="v-flag" style="color:#a855f7;font-weight:700">[REFLECT:${(data.agent || '?').toUpperCase()}]</span>`,
+              ` <span class="v-str">${data.self_assessment || 'No assessment'}</span>`,
+              data.patterns_noticed?.length ? ` <span class="sep">│</span> <span class="k">patterns=</span><span class="v-url">${data.patterns_noticed.slice(0, 2).join(', ')}</span>` : '',
+              ` <span class="sep">│</span> <span class="k">confidence=</span><span class="v-num">${data.confidence?.toFixed?.(2) ?? '—'}</span>`,
+            ].join('');
+          } else {
+            html = `<span class="v-flag" style="color:#a855f7">[HYPER]</span> <span class="v-str">${JSON.stringify(data).slice(0, 120)}</span>`;
+          }
+          const entry: SocEntry = {
+            id: `hyper-${ln}`, lineNum: ln, layer: 'HYPER', raw: html,
+            timestamp: new Date().toISOString().substring(11, 23),
+          };
+          if (!pausedRef.current) {
+            setEntries(prev => [...prev.slice(-500), entry]);
+          }
+        } catch { /* ignore parse errors */ }
+      };
+
+      ws.onerror = () => { /* silent */ };
+    } catch { /* ws creation failed */ }
+
+    return () => {
+      if (hyperIntervalRef.current) clearInterval(hyperIntervalRef.current);
+      if (hyperWsRef.current && hyperWsRef.current.readyState < 2) hyperWsRef.current.close();
+    };
+  }, [isConnected]);
+
   /* ── Filter ─────────────────────────────────────────────────────── */
 
   const visibleEntries = filter === 'all' ? entries
@@ -439,7 +504,7 @@ export function SocTerminal() {
           color: '#4a5568', fontSize: 11, flex: 1, textAlign: 'center',
           letterSpacing: '0.05em', fontFamily: "'JetBrains Mono', monospace",
         }}>
-          CYBERGUARDIAN AI — SOC TERMINAL
+          INARI AI — SOC TERMINAL
         </span>
         <span style={{
           fontSize: 10, padding: '2px 8px', borderRadius: 12,
@@ -453,7 +518,7 @@ export function SocTerminal() {
 
       {/* Layer filter tabs */}
       <div style={{ display: 'flex', background: '#0d1117', borderBottom: '1px solid #1e2a3a' }}>
-        {(['all', 'NET', 'EP', 'APP', 'alerts'] as const).map(f => (
+        {(['all', 'NET', 'EP', 'APP', 'HYPER', 'alerts'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             style={{
               padding: '5px 14px', fontSize: 11, cursor: 'pointer',
@@ -463,6 +528,7 @@ export function SocTerminal() {
                 : f === 'NET' ? '#00aacc'
                 : f === 'EP' ? '#cc66ff'
                 : f === 'APP' ? '#00cc66'
+                : f === 'HYPER' ? '#a855f7'
                 : f === 'alerts' ? '#ff4466'
                 : '#4a5568',
               fontFamily: "'JetBrains Mono', monospace",
@@ -544,6 +610,7 @@ const layerColors: Record<string, { bg: string; color: string; border: string }>
   CORR:  { bg: '#2d2700', color: '#ffcc00', border: '#4a4200' },
   ALERT: { bg: '#2d0d0d', color: '#ff4466', border: '#4a1a1a' },
   SYS:   { bg: '#1a0d00', color: '#ff8833', border: '#3a1a00' },
+  HYPER: { bg: '#1a0026', color: '#a855f7', border: '#3a0050' },
 };
 
 function LogLineRenderer({ entry }: { entry: SocEntry }) {

@@ -9,27 +9,39 @@ export default function Footer() {
             INARI
           </span>
           <p className="text-sm text-on-surface-variant max-w-xs leading-relaxed">
-            Securing the digital horizon with autonomic intelligence and unwavering vigilance.
+            A simulation-first cyber defense product for live demos, analyst training, and explainable workflow prototyping.
           </p>
         </div>
 
-        <FooterColumn 
-          title="Platform" 
-          links={["Threat Pulse", "Asset Inventory", "Network Map"]} 
+        <FooterColumn
+          title="Platform"
+          links={[
+            { label: "Live Demo", href: "/" },
+            { label: "Use Cases", href: "/features" },
+            { label: "Technology", href: "/technology" },
+          ]}
         />
-        <FooterColumn 
-          title="Trust & Legal" 
-          links={["Privacy Policy", "Terms of Service", "SOC2 Compliance", "GDPR"]} 
+        <FooterColumn
+          title="Reality Check"
+          links={[
+            { label: "Features", href: "/features" },
+            { label: "Company Pilots", href: "/features" },
+            { label: "Training View", href: "/login" },
+          ]}
         />
-        <FooterColumn 
-          title="Connect" 
-          links={["Contact", "Support", "Documentation"]} 
+        <FooterColumn
+          title="Connect"
+          links={[
+            { label: "Open Console", href: "/login" },
+            { label: "Blogs", href: "/blogs" },
+            { label: "About", href: "/about" },
+          ]}
         />
       </div>
 
       <div className="max-w-7xl mx-auto mt-20 pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
         <span className="text-sm text-on-surface-variant">
-          © 2024 Inari. The Sentinel’s Horizon.
+          © 2026 Inari AI.
         </span>
         <div className="flex gap-8">
           <Share2 className="text-on-surface-variant hover:text-white cursor-pointer transition-colors" size={20} />
@@ -40,15 +52,15 @@ export default function Footer() {
   );
 }
 
-function FooterColumn({ title, links }: { title: string; links: string[] }) {
+function FooterColumn({ title, links }: { title: string; links: Array<{ label: string; href: string }> }) {
   return (
     <div>
       <h5 className="text-white font-bold mb-6 text-xs uppercase tracking-[0.2em]">{title}</h5>
       <ul className="flex flex-col gap-4">
         {links.map(link => (
-          <li key={link}>
-            <a href="#" className="text-sm text-on-surface-variant hover:text-secondary transition-colors">
-              {link}
+          <li key={link.label}>
+            <a href={link.href} className="text-sm text-on-surface-variant hover:text-secondary transition-colors">
+              {link.label}
             </a>
           </li>
         ))}

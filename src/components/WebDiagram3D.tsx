@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
+import { OrbitControls, Stars, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useSimulationStore } from '../store/simulationStore';
 
@@ -35,12 +35,29 @@ export interface WebDiagram3DProps {
 }
 
 const STATUS_COLORS: Record<NodeStatus, { rim: string; core: string; glow: string }> = {
-  clean: { rim: '#00e5ff', core: '#09101d', glow: 'rgba(0, 229, 255, 0.2)' },
-  compromised: { rim: '#ff0044', core: '#26030f', glow: 'rgba(255, 0, 68, 0.28)' },
-  detected: { rim: '#ffcc00', core: '#221903', glow: 'rgba(255, 204, 0, 0.22)' },
-  isolated: { rim: '#5b6b89', core: '#0a1019', glow: 'rgba(91, 107, 137, 0.16)' },
-  under_attack: { rim: '#ff6600', core: '#241003', glow: 'rgba(255, 102, 0, 0.26)' },
+  clean: { rim: '#00e5ff', core: '#09101d', glow: '#0a2a33' },
+  compromised: { rim: '#ff0044', core: '#26030f', glow: '#33001a' },
+  detected: { rim: '#ffcc00', core: '#221903', glow: '#332800' },
+  isolated: { rim: '#5b6b89', core: '#0a1019', glow: '#141a22' },
+  under_attack: { rim: '#ff6600', core: '#241003', glow: '#331a00' },
 };
+
+// Zone-based colors (used when node is clean — overrides the generic cyan)
+const ZONE_NODE_COLORS: Record<DiagramNode['type'], { rim: string; core: string; glow: string }> = {
+  internet:    { rim: '#ffffff', core: '#0d1117', glow: '#1a1a2e' },
+  dmz:         { rim: '#00b4d8', core: '#051520', glow: '#0a2a38' },
+  app_server:  { rim: '#ff9f43', core: '#1a1005', glow: '#2a1a08' },
+  db_server:   { rim: '#be50ff', core: '#140820', glow: '#1e0c30' },
+  workstation: { rim: '#00ff88', core: '#041a0d', glow: '#082a16' },
+};
+
+const ZONE_LEGEND_INFO: { key: DiagramNode['type']; label: string; color: string }[] = [
+  { key: 'internet',    label: 'Internet',           color: '#ffffff' },
+  { key: 'dmz',         label: 'DMZ — Perimeter',    color: '#00b4d8' },
+  { key: 'app_server',  label: 'Application Servers', color: '#ff9f43' },
+  { key: 'db_server',   label: 'Databases',           color: '#be50ff' },
+  { key: 'workstation', label: 'Workstations',        color: '#00ff88' },
+];
 
 const EDGE_COLORS: Record<DiagramEdge['edgeType'], string> = {
   normal: '#00e5ff',
@@ -198,19 +215,10 @@ function NetworkNode3D({
   const rimRef = useRef<THREE.Mesh>(null);
   const [pingScale, setPingScale] = useState(1);
   const status: NodeStatus = winner ? (winner === 'red' ? 'compromised' : 'clean') : node.status;
-  const colors = STATUS_COLORS[status];
+  // Use zone colors when clean, otherwise use status colors
+  const colors = status === 'clean' ? (ZONE_NODE_COLORS[node.type] || STATUS_COLORS.clean) : STATUS_COLORS[status];
   const radius = TYPE_RADIUS[node.type] ?? 0.5;
-
-  const driftSeed = useMemo(
-    () => ({
-      x: (Math.random() - 0.5) * 0.45,
-      y: (Math.random() - 0.5) * 0.35,
-      z: (Math.random() - 0.5) * 0.35,
-      speed: 0.28 + Math.random() * 0.36,
-      offset: Math.random() * Math.PI * 2,
-    }),
-    [],
-  );
+  const zoneColor = ZONE_NODE_COLORS[node.type]?.rim || '#00e5ff';
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -239,17 +247,17 @@ function NetworkNode3D({
 
     let shakeOffset = 0;
     if (recoilPhase.current > 0) {
-      shakeOffset = (Math.random() - 0.5) * 1.5 * (recoilPhase.current / 30);
+      shakeOffset = (Math.random() - 0.5) * 0.8 * (recoilPhase.current / 30);
       recoilPhase.current--;
     }
 
-    const elapsed = clock.elapsedTime * driftSeed.speed + driftSeed.offset;
-    meshRef.current.position.x = node.position[0] + Math.sin(elapsed * 0.7) * driftSeed.x + shakeOffset;
-    meshRef.current.position.y = node.position[1] + Math.sin(elapsed * 0.5) * driftSeed.y + shakeOffset;
-    meshRef.current.position.z = node.position[2] + Math.cos(elapsed * 0.6) * driftSeed.z;
+    // Only offset during attack shake (local to group)
+    meshRef.current.position.x = shakeOffset;
+    meshRef.current.position.y = shakeOffset;
+    meshRef.current.position.z = 0;
 
     if (status === 'under_attack' || status === 'compromised') {
-      const pulse = 1 + Math.sin(clock.elapsedTime * 5) * 0.18;
+      const pulse = 1 + Math.sin(clock.elapsedTime * 5) * 0.12;
       meshRef.current.scale.setScalar(pulse);
     } else {
       meshRef.current.scale.setScalar(1);
@@ -277,7 +285,7 @@ function NetworkNode3D({
         <meshPhysicalMaterial
           color={colors.core}
           emissive={colors.rim}
-          emissiveIntensity={status === 'compromised' ? 1.2 : status === 'under_attack' ? 0.9 : 0.18}
+          emissiveIntensity={status === 'compromised' ? 1.2 : status === 'under_attack' ? 0.9 : 0.35}
           metalness={0.34}
           opacity={0.88}
           roughness={0.08}
@@ -287,23 +295,23 @@ function NetworkNode3D({
         />
       </mesh>
 
-      <mesh ref={rimRef} position={node.position}>
+      <mesh ref={rimRef}>
         <torusGeometry args={[radius * 1.14, radius * 0.04, 8, 64]} />
         <meshBasicMaterial
-          color={node.type === 'db_server' && status === 'clean' ? '#ffcc00' : colors.rim}
+          color={colors.rim}
           opacity={status === 'isolated' ? 0.18 : 0.74}
           transparent
         />
       </mesh>
 
-      <mesh position={node.position}>
+      <mesh>
         <sphereGeometry args={[radius * 1.6, 16, 16]} />
         <meshBasicMaterial color={colors.glow} opacity={status === 'under_attack' || status === 'compromised' ? 0.45 : 0.22} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
 
       {/* Outer glow halo for active threat states */}
       {(status === 'under_attack' || status === 'compromised') && (
-        <mesh position={node.position}>
+        <mesh>
           <sphereGeometry args={[radius * 2.4, 12, 12]} />
           <meshBasicMaterial color={colors.glow} opacity={0.15} transparent depthWrite={false} blending={THREE.AdditiveBlending} />
         </mesh>
@@ -312,7 +320,6 @@ function NetworkNode3D({
       {/* Point light on active threat nodes */}
       {(status === 'under_attack' || status === 'compromised') && (
         <pointLight
-          position={node.position}
           color={status === 'compromised' ? '#ff0044' : '#ff6600'}
           intensity={1.5}
           distance={6}
@@ -320,15 +327,8 @@ function NetworkNode3D({
         />
       )}
 
-      {node.type === 'db_server' && status === 'clean' ? (
-        <mesh position={node.position}>
-          <sphereGeometry args={[radius * 1.74, 14, 14]} />
-          <meshBasicMaterial color="#ffcc00" opacity={0.06} transparent />
-        </mesh>
-      ) : null}
-
       {pingScale > 1 && pingScale < 3 ? (
-        <mesh position={node.position}>
+        <mesh>
           <torusGeometry args={[radius * pingScale, radius * 0.02, 8, 64]} />
           <meshBasicMaterial
             color={colors.rim}
@@ -337,6 +337,31 @@ function NetworkNode3D({
           />
         </mesh>
       ) : null}
+
+      <Html
+        position={[0, radius + 1.2, 0]}
+        center
+        distanceFactor={18}
+        zIndexRange={[100, 0]}
+        style={{ pointerEvents: 'none', userSelect: 'none' }}
+      >
+        <div style={{
+          fontFamily: '"Orbitron", "IBM Plex Mono", monospace',
+          fontSize: '10px',
+          fontWeight: 700,
+          color: zoneColor,
+          textShadow: `0 0 8px ${zoneColor}, 0 0 16px rgba(0,0,0,0.9)`,
+          whiteSpace: 'nowrap',
+          letterSpacing: '0.5px',
+          textAlign: 'center',
+          background: 'rgba(0,0,0,0.6)',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          border: `1px solid ${zoneColor}66`
+        }}>
+          {node.label}
+        </div>
+      </Html>
     </group>
   );
 }
@@ -359,7 +384,17 @@ function ConnectionEdge({
     const start = new THREE.Vector3(...sourcePos);
     const end = new THREE.Vector3(...targetPos);
     const mid = start.clone().lerp(end, 0.5);
-    mid.y += 0.8;
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    
+    // In 2D mode, we don't want lines popping out in Y which causes parallax
+    // We'll pass an is3D boolean or just use a small offset. 
+    // Since we don't have is3D passed to ConnectionEdge right now, we can check if the camera is angled, 
+    // or better, just keep curve mostly flat but offset in X/Z to avoid overlap.
+    mid.y += Math.max(0.1, dist * 0.05); // Much smaller Y curve to reduce 2D parallax
+    mid.x += dz * 0.08;
+    mid.z -= dx * 0.08;
     return new THREE.CatmullRomCurve3([start, mid, end]);
   }, [sourcePos, targetPos]);
 
@@ -545,6 +580,59 @@ export function WebDiagram3D({
           pointerEvents: 'none',
         }}
       />
+
+      {/* ── Side Legend ──────────────────────────────────────── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 16,
+          left: 16,
+          padding: '14px 16px',
+          background: 'rgba(8,14,24,0.88)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12,
+          pointerEvents: 'none',
+          backdropFilter: 'blur(8px)',
+          zIndex: 10,
+        }}
+      >
+        <p style={{ fontFamily: '"Orbitron", monospace', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginBottom: 10, textTransform: 'uppercase' as const }}>Network Zones</p>
+        {ZONE_LEGEND_INFO.map((z) => (
+          <div key={z.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: z.color, boxShadow: `0 0 6px ${z.color}55` }} />
+            <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{z.label}</span>
+          </div>
+        ))}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8, paddingTop: 8 }}>
+          <p style={{ fontFamily: '"Orbitron", monospace', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginBottom: 8, textTransform: 'uppercase' as const }}>Edges</p>
+          {[
+            { color: '#ff0044', label: 'Attack / Exfil' },
+            { color: '#ff6600', label: 'Lateral Move' },
+            { color: '#ffcc00', label: 'Beacon' },
+            { color: '#00e5ff', label: 'Normal Traffic' },
+          ].map((e) => (
+            <div key={e.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+              <div style={{ width: 16, height: 2, borderRadius: 1, background: e.color }} />
+              <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{e.label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 8, paddingTop: 8 }}>
+          <p style={{ fontFamily: '"Orbitron", monospace', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.5)', letterSpacing: 1.5, marginBottom: 8, textTransform: 'uppercase' as const }}>Status</p>
+          {[
+            { color: '#00ff88', label: 'Clean' },
+            { color: '#ff0044', label: 'Compromised' },
+            { color: '#ffcc00', label: 'Detected' },
+            { color: '#ff6600', label: 'Under Attack' },
+            { color: '#5b6b89', label: 'Isolated' },
+          ].map((s) => (
+            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, boxShadow: `0 0 4px ${s.color}55` }} />
+              <span style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,242 @@
+[
+  {
+    "report_id": "URLSEC-99e3e0acb1",
+    "url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "final_url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "analyzed_at": "2026-04-24T16:09:24.475660+00:00",
+    "timeout_seconds": 15,
+    "status_code": 200,
+    "content_type": "application/json",
+    "security_score": 72,
+    "risk_summary": "Moderate exposure. The URL shows enough surface area that it should be reviewed before being treated as hardened.",
+    "query_parameters": [],
+    "forms_detected": [],
+    "missing_headers": [
+      "Content-Security-Policy",
+      "Strict-Transport-Security",
+      "X-Frame-Options",
+      "X-Content-Type-Options",
+      "Referrer-Policy"
+    ],
+    "response_headers": {
+      "server": "",
+      "x_powered_by": "",
+      "strict_transport_security": "",
+      "content_security_policy": ""
+    },
+    "findings": [
+      {
+        "title": "Insecure transport",
+        "severity": "high",
+        "detail": "The URL does not use HTTPS, so credentials, cookies, and content can be exposed or altered in transit.",
+        "evidence": "http://127.0.0.1:5173/demo/sample-threat-feed.json"
+      },
+      {
+        "title": "Missing protective response headers",
+        "severity": "medium",
+        "detail": "Several baseline browser hardening headers are absent.",
+        "evidence": "Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy"
+      }
+    ],
+    "attack_families": [
+      {
+        "family": "Transport interception and session theft",
+        "severity": "high",
+        "why_it_matters": "Insecure transport makes credential capture and traffic manipulation easier for attackers on-path.",
+        "common_attacker_behavior": "Attackers look for plain HTTP, weak redirects, and downgrade opportunities."
+      },
+      {
+        "family": "Browser and clickjacking exposure",
+        "severity": "medium",
+        "why_it_matters": "Weak response headers make client-side abuse, framing, and content confusion easier.",
+        "common_attacker_behavior": "Attackers combine weak headers with phishing pages, script injection, or deceptive embedding."
+      }
+    ],
+    "countermeasures": [
+      "Serve the site over HTTPS only and redirect plain HTTP permanently.",
+      "Enable HSTS once TLS is stable so browsers stop attempting insecure transport.",
+      "Set a strict Content-Security-Policy and frame protections.",
+      "Send X-Content-Type-Options, Referrer-Policy, and HSTS consistently."
+    ]
+  },
+  {
+    "report_id": "URLSEC-77956f1006",
+    "url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "final_url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "analyzed_at": "2026-04-24T13:34:56.364115+00:00",
+    "timeout_seconds": 15,
+    "status_code": 200,
+    "content_type": "application/json",
+    "security_score": 72,
+    "risk_summary": "Moderate exposure. The URL shows enough surface area that it should be reviewed before being treated as hardened.",
+    "query_parameters": [],
+    "forms_detected": [],
+    "missing_headers": [
+      "Content-Security-Policy",
+      "Strict-Transport-Security",
+      "X-Frame-Options",
+      "X-Content-Type-Options",
+      "Referrer-Policy"
+    ],
+    "response_headers": {
+      "server": "",
+      "x_powered_by": "",
+      "strict_transport_security": "",
+      "content_security_policy": ""
+    },
+    "findings": [
+      {
+        "title": "Insecure transport",
+        "severity": "high",
+        "detail": "The URL does not use HTTPS, so credentials, cookies, and content can be exposed or altered in transit.",
+        "evidence": "http://127.0.0.1:5173/demo/sample-threat-feed.json"
+      },
+      {
+        "title": "Missing protective response headers",
+        "severity": "medium",
+        "detail": "Several baseline browser hardening headers are absent.",
+        "evidence": "Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy"
+      }
+    ],
+    "attack_families": [
+      {
+        "family": "Transport interception and session theft",
+        "severity": "high",
+        "why_it_matters": "Insecure transport makes credential capture and traffic manipulation easier for attackers on-path.",
+        "common_attacker_behavior": "Attackers look for plain HTTP, weak redirects, and downgrade opportunities."
+      },
+      {
+        "family": "Browser and clickjacking exposure",
+        "severity": "medium",
+        "why_it_matters": "Weak response headers make client-side abuse, framing, and content confusion easier.",
+        "common_attacker_behavior": "Attackers combine weak headers with phishing pages, script injection, or deceptive embedding."
+      }
+    ],
+    "countermeasures": [
+      "Serve the site over HTTPS only and redirect plain HTTP permanently.",
+      "Enable HSTS once TLS is stable so browsers stop attempting insecure transport.",
+      "Set a strict Content-Security-Policy and frame protections.",
+      "Send X-Content-Type-Options, Referrer-Policy, and HSTS consistently."
+    ]
+  },
+  {
+    "report_id": "URLSEC-4fb7b4e742",
+    "url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "final_url": "http://127.0.0.1:5173/demo/sample-threat-feed.json",
+    "analyzed_at": "2026-04-24T13:34:22.969210+00:00",
+    "timeout_seconds": 15,
+    "status_code": 200,
+    "content_type": "application/json",
+    "security_score": 72,
+    "risk_summary": "Moderate exposure. The URL shows enough surface area that it should be reviewed before being treated as hardened.",
+    "query_parameters": [],
+    "forms_detected": [],
+    "missing_headers": [
+      "Content-Security-Policy",
+      "Strict-Transport-Security",
+      "X-Frame-Options",
+      "X-Content-Type-Options",
+      "Referrer-Policy"
+    ],
+    "response_headers": {
+      "server": "",
+      "x_powered_by": "",
+      "strict_transport_security": "",
+      "content_security_policy": ""
+    },
+    "findings": [
+      {
+        "title": "Insecure transport",
+        "severity": "high",
+        "detail": "The URL does not use HTTPS, so credentials, cookies, and content can be exposed or altered in transit.",
+        "evidence": "http://127.0.0.1:5173/demo/sample-threat-feed.json"
+      },
+      {
+        "title": "Missing protective response headers",
+        "severity": "medium",
+        "detail": "Several baseline browser hardening headers are absent.",
+        "evidence": "Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy"
+      }
+    ],
+    "attack_families": [
+      {
+        "family": "Transport interception and session theft",
+        "severity": "high",
+        "why_it_matters": "Insecure transport makes credential capture and traffic manipulation easier for attackers on-path.",
+        "common_attacker_behavior": "Attackers look for plain HTTP, weak redirects, and downgrade opportunities."
+      },
+      {
+        "family": "Browser and clickjacking exposure",
+        "severity": "medium",
+        "why_it_matters": "Weak response headers make client-side abuse, framing, and content confusion easier.",
+        "common_attacker_behavior": "Attackers combine weak headers with phishing pages, script injection, or deceptive embedding."
+      }
+    ],
+    "countermeasures": [
+      "Serve the site over HTTPS only and redirect plain HTTP permanently.",
+      "Enable HSTS once TLS is stable so browsers stop attempting insecure transport.",
+      "Set a strict Content-Security-Policy and frame protections.",
+      "Send X-Content-Type-Options, Referrer-Policy, and HSTS consistently."
+    ]
+  },
+  {
+    "report_id": "URLSEC-b0ef6feb90",
+    "url": "http://localhost:5173/demo/sample-threat-feed.json",
+    "final_url": "http://localhost:5173/demo/sample-threat-feed.json",
+    "analyzed_at": "2026-04-24T13:31:17.021324+00:00",
+    "timeout_seconds": 15,
+    "status_code": 200,
+    "content_type": "application/json",
+    "security_score": 72,
+    "risk_summary": "Moderate exposure. The URL shows enough surface area that it should be reviewed before being treated as hardened.",
+    "query_parameters": [],
+    "forms_detected": [],
+    "missing_headers": [
+      "Content-Security-Policy",
+      "Strict-Transport-Security",
+      "X-Frame-Options",
+      "X-Content-Type-Options",
+      "Referrer-Policy"
+    ],
+    "response_headers": {
+      "server": "",
+      "x_powered_by": "",
+      "strict_transport_security": "",
+      "content_security_policy": ""
+    },
+    "findings": [
+      {
+        "title": "Insecure transport",
+        "severity": "high",
+        "detail": "The URL does not use HTTPS, so credentials, cookies, and content can be exposed or altered in transit.",
+        "evidence": "http://localhost:5173/demo/sample-threat-feed.json"
+      },
+      {
+        "title": "Missing protective response headers",
+        "severity": "medium",
+        "detail": "Several baseline browser hardening headers are absent.",
+        "evidence": "Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, Referrer-Policy"
+      }
+    ],
+    "attack_families": [
+      {
+        "family": "Transport interception and session theft",
+        "severity": "high",
+        "why_it_matters": "Insecure transport makes credential capture and traffic manipulation easier for attackers on-path.",
+        "common_attacker_behavior": "Attackers look for plain HTTP, weak redirects, and downgrade opportunities."
+      },
+      {
+        "family": "Browser and clickjacking exposure",
+        "severity": "medium",
+        "why_it_matters": "Weak response headers make client-side abuse, framing, and content confusion easier.",
+        "common_attacker_behavior": "Attackers combine weak headers with phishing pages, script injection, or deceptive embedding."
+      }
+    ],
+    "countermeasures": [
+      "Serve the site over HTTPS only and redirect plain HTTP permanently.",
+      "Enable HSTS once TLS is stable so browsers stop attempting insecure transport.",
+      "Set a strict Content-Security-Policy and frame protections.",
+      "Send X-Content-Type-Options, Referrer-Policy, and HSTS consistently."
+    ]
+  }
+]

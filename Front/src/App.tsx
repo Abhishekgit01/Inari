@@ -1,6 +1,7 @@
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Capabilities from "./components/Capabilities";
+import EnterpriseModes from "./components/EnterpriseModes";
 import LiveDemo from "./components/LiveDemo";
 import Comparison from "./components/Comparison";
 import TechnicalSpecs from "./components/TechnicalSpecs";
@@ -13,6 +14,7 @@ export default function App() {
       <Navbar />
       <Hero />
       <Capabilities />
+      <EnterpriseModes />
       <LiveDemo />
       <Comparison />
       <TechnicalSpecs />

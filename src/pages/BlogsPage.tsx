@@ -4,12 +4,14 @@ import { SiteNavbar } from '../components/SiteNavbar';
 import { FrostGlass } from '../components/FrostGlass';
 const posts = [
   {
-    title: 'How PPO-Trained Blue Agents Outperform Static SOAR Rules',
-    excerpt: 'Our deep RL defender achieves 3.2× faster mean time to respond by learning adaptive isolation and patching strategies that no rulebook can anticipate.',
-    author: 'Inari Research',
+    title: 'The Enterprise Attack Surface Field Report',
+    excerpt: 'A practical long-form report on where attackers usually enter, how they move across the estate, and which prevention habits actually interrupt the path.',
+    author: 'Athernex Research',
     date: 'Apr 2026',
-    tag: 'Research',
+    tag: 'Field Report',
     tagColor: '#00e5ff',
+    href: '/threat-report',
+    cta: 'Open report',
   },
   {
     title: 'Kill Chain Velocity: Predicting Breach Windows in Real-Time',
@@ -18,6 +20,8 @@ const posts = [
     date: 'Mar 2026',
     tag: 'Threat Intel',
     tagColor: '#ff6600',
+    href: '#',
+    cta: 'Read more',
   },
   {
     title: 'Shadow Branch Execution: Pre-Computing Attack Paths Before They Happen',
@@ -26,6 +30,8 @@ const posts = [
     date: 'Mar 2026',
     tag: 'Engineering',
     tagColor: '#00ff88',
+    href: '#',
+    cta: 'Read more',
   },
   {
     title: 'Why Decision Transparency Matters in Autonomous Security',
@@ -34,6 +40,8 @@ const posts = [
     date: 'Feb 2026',
     tag: 'Product',
     tagColor: '#ffcc00',
+    href: '#',
+    cta: 'Read more',
   },
   {
     title: 'Cross-Layer Correlation: Fusing Network, Endpoint, and Application Signals',
@@ -42,6 +50,8 @@ const posts = [
     date: 'Feb 2026',
     tag: 'Detection',
     tagColor: '#ff0044',
+    href: '#',
+    cta: 'Read more',
   },
   {
     title: 'Building the Autonomy Budget: Preventing Runaway AI Defenders',
@@ -50,6 +60,8 @@ const posts = [
     date: 'Jan 2026',
     tag: 'AI Safety',
     tagColor: '#00e5ff',
+    href: '#',
+    cta: 'Read more',
   },
 ];
 
@@ -70,10 +82,35 @@ export function BlogsPage() {
           </p>
         </div>
 
+        <motion.a
+          href="/threat-report"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ display: 'block', textDecoration: 'none', marginBottom: '28px' }}
+        >
+          <FrostGlass padding="28px" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '20px', alignItems: 'center' }}>
+            <div style={{ maxWidth: '760px' }}>
+              <div style={{ fontSize: '11px', fontFamily: '"Inter", monospace', fontWeight: 600, letterSpacing: '0.08em', color: '#00e5ff', textTransform: 'uppercase', marginBottom: '10px' }}>
+                Featured report
+              </div>
+              <h2 style={{ margin: '0 0 10px', fontSize: '28px', color: '#fff', fontFamily: '"Inter", sans-serif' }}>
+                The Enterprise Attack Surface Field Report
+              </h2>
+              <p style={{ margin: 0, color: '#94a3b8', fontSize: '15px', lineHeight: 1.7 }}>
+                A downloadable long-form report covering where attacks usually land, how attackers move, and what defenders can do to break the path early.
+              </p>
+            </div>
+            <span style={{ color: '#00e5ff', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '14px', fontWeight: 500 }}>
+              Open report <ArrowRight size={16} />
+            </span>
+          </FrostGlass>
+        </motion.a>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '24px' }}>
           {posts.map((post, i) => (
-            <motion.article
+            <motion.a
               key={post.title}
+              href={post.href}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: i * 0.06 }}
@@ -81,6 +118,7 @@ export function BlogsPage() {
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
+                textDecoration: 'none',
               }}
             >
               <FrostGlass style={{ display: 'flex', flexDirection: 'column', height: '100%' }} padding="32px">
@@ -105,11 +143,11 @@ export function BlogsPage() {
                   <User size={14} /> {post.author}
                 </span>
                 <span style={{ fontSize: '13px', fontWeight: 500, color: '#00e5ff', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  Read more <ArrowRight size={14} />
+                  {post.cta} <ArrowRight size={14} />
                 </span>
               </div>
               </FrostGlass>
-            </motion.article>
+            </motion.a>
           ))}
         </div>
       </main>

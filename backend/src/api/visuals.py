@@ -88,6 +88,26 @@ THREAT_META = {
         "mitre_name": "Application Layer Protocol",
         "headline": "Beaconing pattern indicates remote control",
     },
+    "ddos": {
+        "mitre_id": "T1498",
+        "mitre_name": "Network Denial of Service",
+        "headline": "High volume traffic disrupting service",
+    },
+    "phishing": {
+        "mitre_id": "T1566",
+        "mitre_name": "Phishing",
+        "headline": "Suspicious email delivery detected",
+    },
+    "ransomware": {
+        "mitre_id": "T1486",
+        "mitre_name": "Data Encrypted for Impact",
+        "headline": "Mass file encryption behavior observed",
+    },
+    "privilege_escalation": {
+        "mitre_id": "T1068",
+        "mitre_name": "Exploitation for Privilege Escalation",
+        "headline": "Unauthorized rights elevation detected",
+    },
 }
 
 SEVERITY_COLORS = {
@@ -309,8 +329,16 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
     traffic = network.get_traffic_matrix()
 
     nodes: list[dict[str, Any]] = []
+    # Check which node ports are offline (deleted via CLI)
+    dead_ports: set[int] = getattr(env, "_dead_ports", set())
+
     for host_id in range(env.num_hosts):
-        status = "clean"
+        node_port = 8005 + host_id
+        is_offline = host_id <= 14 and node_port in dead_ports
+
+        if is_offline:
+            continue
+            
         if host_id in env.isolated_hosts:
             status = "isolated"
         elif host_id == red_target and host_id not in env.isolated_hosts:
@@ -319,6 +347,8 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
             status = "detected"
         elif host_id in env.compromised_hosts:
             status = "compromised"
+        else:
+            status = "clean"
 
         alert_row = network.alert_scores[host_id]
         alert_scores = {
@@ -328,7 +358,6 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
             "c2_beacon": round(float(alert_row[3]), 3),
         }
 
-        pulse = 0.12
         if status == "compromised":
             pulse = 0.95
         elif status == "detected":
@@ -339,8 +368,9 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
             pulse = 1.0
         elif host_id in latest_alert_hosts:
             pulse = 0.42
+        else:
+            pulse = 0.12
 
-        glow_color = None
         if status == "compromised":
             glow_color = "#ff0044"
         elif status == "detected":
@@ -349,6 +379,8 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
             glow_color = "#ff9900"
         elif host_id in latest_alert_hosts:
             glow_color = "#00e5ff"
+        else:
+            glow_color = None
 
         nodes.append(
             {
@@ -364,6 +396,7 @@ def build_network_graph_state(session: dict[str, Any]) -> dict[str, Any]:
                 "is_red_current_position": host_id == env.red_position,
                 "pulse_intensity": pulse,
                 "glow_color": glow_color,
+                "is_offline": is_offline,
             }
         )
 
@@ -1146,48 +1179,14 @@ def build_init_message(session: dict[str, Any]) -> dict[str, Any]:
         "battle_results": [],
         "scoreboard": scoreboard.model_dump(),
         "briefing": briefing,
-    }
-
-
-def seed_training_metrics() -> dict[str, Any]:
-    reward_history = []
-    win_rate_history = []
-    detection_history = []
-    for step in range(0, 1_000_001, 50_000):
-        progress = step / 1_000_000
-        reward_history.append(
-            {
-                "step": step,
-                "red_reward": round(18 + math.sin(progress * 4.5) * 6 + progress * 4, 2),
-                "blue_reward": round(22 + progress * 14 + math.cos(progress * 5.0) * 4, 2),
-            }
-        )
-        win_rate_history.append(
-            {
-                "step": step,
-                "red_win_rate": round(_clamp(0.62 - progress * 0.18), 3),
-                "blue_win_rate": round(_clamp(0.38 + progress * 0.22), 3),
-            }
-        )
-        detection_history.append(
-            {
-                "step": step,
-                "detection_rate": round(_clamp(0.42 + progress * 0.42), 3),
-                "fp_rate": round(_clamp(0.18 - progress * 0.12), 3),
-            }
-        )
-
-    return {
-        "steps_trained": 1_000_000,
-        "reward_history": reward_history,
-        "win_rate_history": win_rate_history,
-        "detection_history": detection_history,
+        "integration_events": session.get("integration_events", [])[:24],
     }
 
 
 def update_training_metrics(metrics: dict[str, Any], session: dict[str, Any]) -> None:
     metrics["steps_trained"] += session["env"].max_steps
-    next_step = metrics["reward_history"][-1]["step"] + session["env"].max_steps
+    last_step = metrics["reward_history"][-1]["step"] if metrics["reward_history"] else 0
+    next_step = last_step + session["env"].max_steps
     metrics["reward_history"].append(
         {
             "step": next_step,
@@ -1206,11 +1205,13 @@ def update_training_metrics(metrics: dict[str, Any], session: dict[str, Any]) ->
         blue_win = 0.5
         red_win = 0.5
 
+    prev_red_wr = metrics["win_rate_history"][-1]["red_win_rate"] if metrics["win_rate_history"] else 0.5
+    prev_blue_wr = metrics["win_rate_history"][-1]["blue_win_rate"] if metrics["win_rate_history"] else 0.5
     metrics["win_rate_history"].append(
         {
             "step": next_step,
-            "red_win_rate": round((metrics["win_rate_history"][-1]["red_win_rate"] * 0.85) + red_win * 0.15, 3),
-            "blue_win_rate": round((metrics["win_rate_history"][-1]["blue_win_rate"] * 0.85) + blue_win * 0.15, 3),
+            "red_win_rate": round((prev_red_wr * 0.85) + red_win * 0.15, 3),
+            "blue_win_rate": round((prev_blue_wr * 0.85) + blue_win * 0.15, 3),
         }
     )
     detection_rate = round(

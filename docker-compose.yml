@@ -1,0 +1,502 @@
+# ═══════════════════════════════════════════════════════════════
+# CyberGuardian Network Simulation — Real Docker Containers
+#
+# Each container maps to a node in the 3D network diagram:
+#   Zone 0-1  → DMZ      → ports 9001-9002
+#   Zone 2-6  → APP      → ports 9011-9015
+#   Zone 7-9  → DATABASE → ports 9021-9023
+#   Zone 10+  → WS       → ports 9031-9035
+#
+# Run: docker compose up -d
+# Logs: docker compose logs -f --tail=50
+# ═══════════════════════════════════════════════════════════════
+
+networks:
+  dmz_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24
+  app_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.1.0/24
+  db_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.7.0/24
+  ws_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.10.0/24
+
+services:
+
+  # ─── DMZ ZONE (Hosts 0-1) ──────────────────────────────────────
+
+  dmz-01:
+    image: nginx:alpine
+    container_name: dmz_01
+    hostname: DMZ-01
+    ports:
+      - "9001:80"
+    networks:
+      dmz_net:
+        ipv4_address: 10.0.0.11
+      app_net: {}
+    volumes:
+      - ./docker/dmz/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/dmz/html:/usr/share/nginx/html:ro
+    environment:
+      - NODE_ID=0
+      - NODE_LABEL=DMZ-01
+      - NODE_ZONE=dmz
+      - VULNERABILITY=low
+    labels:
+      cyberguardian.node_id: "0"
+      cyberguardian.zone: "dmz"
+      cyberguardian.label: "DMZ-01"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  dmz-02:
+    image: nginx:alpine
+    container_name: dmz_02
+    hostname: DMZ-02
+    ports:
+      - "9002:80"
+    networks:
+      dmz_net:
+        ipv4_address: 10.0.0.12
+      app_net: {}
+    volumes:
+      - ./docker/dmz/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/dmz/html:/usr/share/nginx/html:ro
+    environment:
+      - NODE_ID=1
+      - NODE_LABEL=DMZ-02
+      - NODE_ZONE=dmz
+      - VULNERABILITY=low
+    labels:
+      cyberguardian.node_id: "1"
+      cyberguardian.zone: "dmz"
+      cyberguardian.label: "DMZ-02"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  # ─── APPLICATION ZONE (Hosts 2-6) ─────────────────────────────
+
+  app-01:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: app_01
+    hostname: APP-01
+    ports:
+      - "9011:3000"
+    networks:
+      app_net:
+        ipv4_address: 10.0.1.11
+      db_net: {}
+    environment:
+      - NODE_ID=2
+      - NODE_LABEL=APP-01
+      - NODE_ZONE=app_server
+      - VULNERABILITY=medium
+      - DB_HOST=10.0.7.11
+      - SERVICE_NAME=auth-service
+    labels:
+      cyberguardian.node_id: "2"
+      cyberguardian.zone: "app_server"
+      cyberguardian.label: "APP-01"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  app-02:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: app_02
+    hostname: APP-02
+    ports:
+      - "9012:3000"
+    networks:
+      app_net:
+        ipv4_address: 10.0.1.12
+      db_net: {}
+    environment:
+      - NODE_ID=3
+      - NODE_LABEL=APP-02
+      - NODE_ZONE=app_server
+      - VULNERABILITY=medium
+      - SERVICE_NAME=api-gateway
+    labels:
+      cyberguardian.node_id: "3"
+      cyberguardian.zone: "app_server"
+      cyberguardian.label: "APP-02"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  app-03:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: app_03
+    hostname: APP-03
+    ports:
+      - "9013:3000"
+    networks:
+      app_net:
+        ipv4_address: 10.0.1.13
+      db_net: {}
+    environment:
+      - NODE_ID=4
+      - NODE_LABEL=APP-03
+      - NODE_ZONE=app_server
+      - VULNERABILITY=high
+      - SERVICE_NAME=payment-processor
+    labels:
+      cyberguardian.node_id: "4"
+      cyberguardian.zone: "app_server"
+      cyberguardian.label: "APP-03"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  app-04:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: app_04
+    hostname: APP-04
+    ports:
+      - "9014:3000"
+    networks:
+      app_net:
+        ipv4_address: 10.0.1.14
+    environment:
+      - NODE_ID=5
+      - NODE_LABEL=APP-04
+      - NODE_ZONE=app_server
+      - VULNERABILITY=medium
+      - SERVICE_NAME=web-frontend
+    labels:
+      cyberguardian.node_id: "5"
+      cyberguardian.zone: "app_server"
+      cyberguardian.label: "APP-04"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  app-05:
+    build:
+      context: ./docker/app
+      dockerfile: Dockerfile
+    container_name: app_05
+    hostname: APP-05
+    ports:
+      - "9015:3000"
+    networks:
+      app_net:
+        ipv4_address: 10.0.1.15
+      db_net: {}
+    environment:
+      - NODE_ID=6
+      - NODE_LABEL=APP-05
+      - NODE_ZONE=app_server
+      - VULNERABILITY=low
+      - SERVICE_NAME=cicd-runner
+    labels:
+      cyberguardian.node_id: "6"
+      cyberguardian.zone: "app_server"
+      cyberguardian.label: "APP-05"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  # ─── DATABASE ZONE (Hosts 7-9) ────────────────────────────────
+
+  db-01:
+    image: postgres:15-alpine
+    container_name: db_01
+    hostname: DB-01
+    ports:
+      - "9021:5432"
+    networks:
+      db_net:
+        ipv4_address: 10.0.7.11
+    environment:
+      - NODE_ID=7
+      - NODE_LABEL=DB-01
+      - NODE_ZONE=db_server
+      - VULNERABILITY=medium
+      - POSTGRES_DB=customers
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=simpass
+    labels:
+      cyberguardian.node_id: "7"
+      cyberguardian.zone: "db_server"
+      cyberguardian.label: "DB-01"
+      cyberguardian.data_value: "high"
+    volumes:
+      - db01_data:/var/lib/postgresql/data
+      - ./docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d customers"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  db-02:
+    image: redis:7-alpine
+    container_name: db_02
+    hostname: DB-02
+    ports:
+      - "9022:6379"
+    networks:
+      db_net:
+        ipv4_address: 10.0.7.12
+    environment:
+      - NODE_ID=8
+      - NODE_LABEL=DB-02
+      - NODE_ZONE=db_server
+      - VULNERABILITY=low
+    labels:
+      cyberguardian.node_id: "8"
+      cyberguardian.zone: "db_server"
+      cyberguardian.label: "DB-02"
+      cyberguardian.data_value: "medium"
+    command: redis-server --appendonly yes --requirepass simpass
+    volumes:
+      - db02_data:/data
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  db-03:
+    image: postgres:15-alpine
+    container_name: db_03
+    hostname: DB-03
+    ports:
+      - "9023:5432"
+    networks:
+      db_net:
+        ipv4_address: 10.0.7.13
+    environment:
+      - NODE_ID=9
+      - NODE_LABEL=DB-03
+      - NODE_ZONE=db_server
+      - VULNERABILITY=high
+      - POSTGRES_DB=secrets_vault
+      - POSTGRES_USER=vaultuser
+      - POSTGRES_PASSWORD=simpass
+    labels:
+      cyberguardian.node_id: "9"
+      cyberguardian.zone: "db_server"
+      cyberguardian.label: "DB-03"
+      cyberguardian.data_value: "critical"
+    volumes:
+      - db03_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  # ─── WORKSTATION ZONE (Hosts 10-14) ───────────────────────────
+
+  ws-01:
+    build:
+      context: ./docker/workstation
+      dockerfile: Dockerfile
+    container_name: ws_01
+    hostname: WS-01
+    ports:
+      - "9031:8080"
+    networks:
+      ws_net:
+        ipv4_address: 10.0.10.11
+      app_net: {}
+    environment:
+      - NODE_ID=10
+      - NODE_LABEL=WS-01
+      - NODE_ZONE=workstation
+      - USER=developer
+    labels:
+      cyberguardian.node_id: "10"
+      cyberguardian.zone: "workstation"
+      cyberguardian.label: "WS-01"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  ws-02:
+    build:
+      context: ./docker/workstation
+      dockerfile: Dockerfile
+    container_name: ws_02
+    hostname: WS-02
+    ports:
+      - "9032:8080"
+    networks:
+      ws_net:
+        ipv4_address: 10.0.10.12
+      app_net: {}
+    environment:
+      - NODE_ID=11
+      - NODE_LABEL=WS-02
+      - NODE_ZONE=workstation
+      - USER=finance-team
+    labels:
+      cyberguardian.node_id: "11"
+      cyberguardian.zone: "workstation"
+      cyberguardian.label: "WS-02"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  ws-03:
+    build:
+      context: ./docker/workstation
+      dockerfile: Dockerfile
+    container_name: ws_03
+    hostname: WS-03
+    ports:
+      - "9033:8080"
+    networks:
+      ws_net:
+        ipv4_address: 10.0.10.13
+      app_net: {}
+    environment:
+      - NODE_ID=12
+      - NODE_LABEL=WS-03
+      - NODE_ZONE=workstation
+      - USER=hr-team
+    labels:
+      cyberguardian.node_id: "12"
+      cyberguardian.zone: "workstation"
+      cyberguardian.label: "WS-03"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  ws-04:
+    build:
+      context: ./docker/workstation
+      dockerfile: Dockerfile
+    container_name: ws_04
+    hostname: WS-04
+    ports:
+      - "9034:8080"
+    networks:
+      ws_net:
+        ipv4_address: 10.0.10.14
+      app_net: {}
+    environment:
+      - NODE_ID=13
+      - NODE_LABEL=WS-04
+      - NODE_ZONE=workstation
+      - USER=executive
+    labels:
+      cyberguardian.node_id: "13"
+      cyberguardian.zone: "workstation"
+      cyberguardian.label: "WS-04"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  ws-05:
+    build:
+      context: ./docker/workstation
+      dockerfile: Dockerfile
+    container_name: ws_05
+    hostname: WS-05
+    ports:
+      - "9035:8080"
+    networks:
+      ws_net:
+        ipv4_address: 10.0.10.15
+      app_net: {}
+    environment:
+      - NODE_ID=14
+      - NODE_LABEL=WS-05
+      - NODE_ZONE=workstation
+      - USER=it-ops
+    labels:
+      cyberguardian.node_id: "14"
+      cyberguardian.zone: "workstation"
+      cyberguardian.label: "WS-05"
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+  # ─── LOG AGGREGATOR ────────────────────────────────────────────
+
+  log-aggregator:
+    image: python:3.11-slim
+    container_name: cg_log_aggregator
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./docker/log_server.py:/app/log_server.py:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    working_dir: /app
+    command: python log_server.py
+    networks:
+      - dmz_net
+      - app_net
+    restart: unless-stopped
+    labels:
+      cyberguardian.role: "log_aggregator"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+
+volumes:
+  db01_data:
+  db02_data:
+  db03_data:

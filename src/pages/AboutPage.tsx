@@ -21,42 +21,28 @@ export function AboutPage() {
           </h1>
           
           <p style={{ color: '#e2e8f0', fontSize: '18px', lineHeight: 1.8, marginBottom: '40px' }}>
-            We are Abhishek R P and GiGI Koneti — developers who want to build a secure world. We believe that cyber defense shouldn't rely on opaque, legacy rulebooks. It should be autonomous, transparent, and built to adapt in real-time.
+            We are Team Inari — Abhishek R P, GiGi Koneti, Surakshan, and Varchas. We are developers who want to build a secure world. We believe that cyber defense shouldn't rely on opaque, legacy rulebooks. It should be autonomous, transparent, and built to adapt in real-time.
           </p>
           
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px' }}>
-            <a href="#" style={{ 
-              display: 'inline-block',
-              padding: '12px 24px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '99px',
-              color: '#00e5ff', 
-              textDecoration: 'none',
-              fontFamily: '"Inter", sans-serif',
-              fontWeight: 500,
-              transition: 'background 0.3s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              Abhishek's Socials ↗
-            </a>
-            <a href="#" style={{ 
-              display: 'inline-block',
-              padding: '12px 24px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: '99px',
-              color: '#00e5ff', 
-              textDecoration: 'none',
-              fontFamily: '"Inter", sans-serif',
-              fontWeight: 500,
-              transition: 'background 0.3s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              GiGI's Socials ↗
-            </a>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', flexWrap: 'wrap' }}>
+            {['Abhishek R P', 'GiGi Koneti', 'Surakshan', 'Varchas'].map((member) => (
+              <a key={member} href="#" style={{ 
+                display: 'inline-block',
+                padding: '12px 24px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '99px',
+                color: '#00e5ff', 
+                textDecoration: 'none',
+                fontFamily: '"Inter", sans-serif',
+                fontWeight: 500,
+                transition: 'background 0.3s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {member}'s Socials ↗
+              </a>
+            ))}
           </div>
           </FrostGlass>
         </motion.section>

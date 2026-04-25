@@ -13,7 +13,7 @@ from ..config.secrets import HF_API_TOKEN
 class LLMAgentBase:
     def __init__(self, role: str, model_id: str = "meta-llama/Meta-Llama-3-8B-Instruct"):
         self.role = role
-        api_token = os.getenv("HF_API_TOKEN", HF_API_TOKEN)
+        api_token = os.getenv("HF_API_TOKEN", HF_API_TOKEN).strip()
         self.client = InferenceClient(model=model_id, token=api_token) if api_token and InferenceClient else None
         self.remote_disabled_reason: str | None = None
         

@@ -3,6 +3,7 @@ import BattleScoreboard from '../components/ops/BattleScoreboard';
 import BattleTimeline from '../components/ops/BattleTimeline';
 import BattleToastManager from '../components/ops/BattleToast';
 import BreachCountdown from '../components/ops/BreachCountdown';
+import { HyperAgentPanel } from '../components/ops/HyperAgentPanel';
 import VelocitySparkline from '../components/ops/VelocitySparkline';
 import { useSimulationStore } from '../store/simulationStore';
 
@@ -32,37 +33,6 @@ export function SimulationPage() {
   const totals = Math.max(1, Math.abs(redCumulative) + Math.abs(blueCumulative));
   const redPct = Math.max(12, (Math.abs(redCumulative) / totals) * 100);
   const bluePct = Math.max(12, (Math.abs(blueCumulative) / totals) * 100);
-
-  /* ── Demo fallback data for when no live simulation is connected ── */
-  const demoKillChain = killChain || {
-    current_stage: 3,
-    current_stage_name: 'C2',
-    max_stage_reached: 3,
-    stage_color: '#ff6600',
-    kill_chain_progress: 0.43,
-    velocity: 0.62,
-    velocity_history: [0.1, 0.25, 0.38, 0.5, 0.62],
-    acceleration: 0.12,
-    velocity_label: 'Accelerating',
-    dwell_time_steps: 4,
-    dwell_time_seconds: 12,
-    dwell_time_display: '12s',
-    breach_countdown_seconds: 272,
-    breach_countdown_display: '04:32',
-    breach_confidence: 0.87,
-    urgency: 'high' as const,
-    urgency_color: '#ff6600',
-    top_apt_match: 'APT28',
-    top_apt_score: 0.82,
-    apt_similarity: { APT28: 0.82, APT29: 0.64, Lazarus: 0.41 },
-    stage_history: [1, 2, 2, 3, 3, 3],
-  };
-
-  const demoAptAttribution = aptAttribution?.length ? aptAttribution : [
-    { name: 'APT28 (Fancy Bear)', score: 0.82, score_percent: 82, bar_fill: 82, nation: 'Russia', flag: '\uD83C\uDDF7\uD83C\uDDFA', targets: ['Government', 'Military'], risk_note: 'High confidence nation-state actor', color: '#ff335f', is_top_match: true },
-    { name: 'APT29 (Cozy Bear)', score: 0.64, score_percent: 64, bar_fill: 64, nation: 'Russia', flag: '\uD83C\uDDF7\uD83C\uDDFA', targets: ['Think Tanks', 'Cloud'], risk_note: 'Supply chain specialist', color: '#ff6600', is_top_match: false },
-    { name: 'Lazarus Group', score: 0.41, score_percent: 41, bar_fill: 41, nation: 'North Korea', flag: '\uD83C\uDDF0\uD83C\uDDF5', targets: ['Financial', 'Cryptocurrency'], risk_note: 'Financially motivated', color: '#ffcc00', is_top_match: false },
-  ];
 
   return (
     <div className="page-stack">
@@ -96,31 +66,55 @@ export function SimulationPage() {
             <div className="ops-display text-[0.62rem] text-secondary/70">Kill Chain Oracle</div>
             <h2 className="panel-title">Breach Countdown + APT Attribution</h2>
           </div>
-          <span className="status-pill" style={{ color: demoKillChain.urgency_color }}>{demoKillChain.velocity_label}</span>
+          {killChain ? <span className="status-pill" style={{ color: killChain.urgency_color }}>{killChain.velocity_label}</span> : null}
         </div>
         <div className="mt-4 flex flex-col gap-4">
-          <BreachCountdown
-            countdownDisplay={demoKillChain.breach_countdown_display || '--:--'}
-            countdownSeconds={demoKillChain.breach_countdown_seconds}
-            confidence={demoKillChain.breach_confidence || 0}
-            urgency={demoKillChain.urgency || 'low'}
-            urgencyColor={demoKillChain.urgency_color || '#00e5ff'}
-            currentStage={demoKillChain.current_stage || 1}
-            currentStageName={demoKillChain.current_stage_name || 'Monitoring'}
-            killChainProgress={demoKillChain.kill_chain_progress || 0}
-          />
-          <VelocitySparkline history={demoKillChain.velocity_history ?? []} label={demoKillChain.velocity_label ?? 'DORMANT'} color={demoKillChain.urgency_color ?? '#00e5ff'} />
-          <AptAttribution matches={demoAptAttribution} />
-          {/* Reasoning */}
-          <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.12)', borderRadius: 6, padding: '10px 12px' }}>
-            <div style={{ fontFamily: '"Orbitron", monospace', fontSize: 9, letterSpacing: '0.14em', color: '#00e5ff', marginBottom: 6 }}>WHAT'S HAPPENING</div>
-            <div style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7 }}>
-              <div style={{ marginBottom: 4 }}><span style={{ color: '#ff6600' }}>▸ Current threat level:</span> The attacker has taken control of a server and is using it to send hidden messages back to their base. Think of it like a burglar who's inside your house and is quietly calling home.</div>
-              <div style={{ marginBottom: 4 }}><span style={{ color: '#ff335f' }}>▸ Who's behind this:</span> The attack pattern closely matches APT28 (Fancy Bear) — a well-known hacking group linked to Russia. They typically break in through fake emails, then steal passwords to move deeper.</div>
-              <div style={{ marginBottom: 4 }}><span style={{ color: '#ffcc00' }}>▸ Time until breach:</span> If nothing changes, the attacker could steal your data in about {demoKillChain.breach_countdown_display}. The defense team has slowed them down but hasn't stopped them yet.</div>
-              <div><span style={{ color: '#00ff88' }}>▸ What you should do:</span> Cut off the compromised server from the internet immediately. Place traps on your database to detect if the attacker tries to access it. Block suspicious outgoing connections.</div>
+          {killChain ? (
+            <>
+              <BreachCountdown
+                countdownDisplay={killChain.breach_countdown_display || '--:--'}
+                countdownSeconds={killChain.breach_countdown_seconds}
+                confidence={killChain.breach_confidence || 0}
+                urgency={killChain.urgency || 'low'}
+                urgencyColor={killChain.urgency_color || '#00e5ff'}
+                currentStage={killChain.current_stage || 1}
+                currentStageName={killChain.current_stage_name || 'Monitoring'}
+                killChainProgress={killChain.kill_chain_progress || 0}
+              />
+              <VelocitySparkline history={killChain.velocity_history ?? []} label={killChain.velocity_label ?? 'DORMANT'} color={killChain.urgency_color ?? '#00e5ff'} />
+              {aptAttribution?.length ? <AptAttribution matches={aptAttribution} /> : null}
+              <div style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.12)', borderRadius: 6, padding: '10px 12px' }}>
+                <div style={{ fontFamily: '"Orbitron", monospace', fontSize: 9, letterSpacing: '0.14em', color: '#00e5ff', marginBottom: 6 }}>WHAT'S HAPPENING</div>
+                <div style={{ fontFamily: '"IBM Plex Mono", monospace', fontSize: 11, color: 'rgba(255,255,255,0.65)', lineHeight: 1.7 }}>
+                  <div style={{ marginBottom: 4 }}>
+                    <span style={{ color: '#ff6600' }}>▸ Current threat level:</span> The live kill chain currently sits at{' '}
+                    {killChain.current_stage_name}. The urgency is {killChain.urgency}, and breach confidence is{' '}
+                    {Math.round((killChain.breach_confidence || 0) * 100)}%.
+                  </div>
+                  <div style={{ marginBottom: 4 }}>
+                    <span style={{ color: '#ff335f' }}>▸ Attribution signal:</span>{' '}
+                    {aptAttribution?.[0]
+                      ? `The strongest live behavioral match is ${aptAttribution[0].name}. ${aptAttribution[0].risk_note}`
+                      : 'No attribution pattern is strong enough yet to call out a likely actor.'}
+                  </div>
+                  <div style={{ marginBottom: 4 }}>
+                    <span style={{ color: '#ffcc00' }}>▸ Time until breach:</span>{' '}
+                    {killChain.breach_countdown_display
+                      ? `If the current pace holds, the modeled breach window is ${killChain.breach_countdown_display}.`
+                      : 'The current evidence is not yet enough to estimate a stable breach window.'}
+                  </div>
+                  <div>
+                    <span style={{ color: '#00ff88' }}>▸ Operator focus:</span> Review the newest live alerts, isolate the hottest host paths,
+                    and use the War Room plus URL Security surfaces to validate the most likely next pivot before taking containment action.
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="empty-panel !min-h-[220px]">
+              Live kill-chain and attribution data will appear here once the simulation or bridged external events have produced enough evidence.
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -160,6 +154,11 @@ export function SimulationPage() {
       </section>
 
       <BattleTimeline maxSteps={maxSteps} results={battleResults} step={step} />
+
+      {/* HyperAgent Meta-Engine */}
+      <section className="ops-card p-5">
+        <HyperAgentPanel />
+      </section>
     </div>
   );
 }

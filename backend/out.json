@@ -1,0 +1,1 @@
+{"status": "online", "node_id": 1, "label": "DMZ-02", "zone": "dmz", "role": "Web Gateway", "service": "Web Gateway", "port": 8006, "color": "#00b4d8", "vulnerability": "medium", "owner": "fintrust_bank", "data_value": "medium", "compromised": false, "uptime_s": 3775, "request_count": 166, "ts": "2026-04-24T23:48:49.274076+00:00"}

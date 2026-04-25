@@ -37,7 +37,7 @@ export function ProductSidebar({ currentRoute, onNavigate, isConnected }: Produc
     <aside className="product-sidebar hidden md:flex">
       <button className="brand-lockup" onClick={() => onNavigate('/')} type="button">
         <div className="brand-mark">CG</div>
-        <div className="ops-display text-[0.54rem] text-secondary/70">CyberGuardian</div>
+        <div className="ops-display text-[0.54rem] text-secondary/70">Inari</div>
       </button>
 
       <nav className="mt-8 flex flex-1 flex-col gap-3">

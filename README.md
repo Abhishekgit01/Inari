@@ -1,239 +1,89 @@
-# CyberGuardian AI
+# CyberGuardian by Inari (Athernex Hackathon)
 
-Adversarial cybersecurity simulation platform where Red (attacker) and Blue (defender) AI agents train through self-play to detect and respond to cyber threats in real-time.
+![Landing Page](/home/abhi/.gemini/antigravity/brain/417f55d4-b15f-4180-a6b6-06895f282368/landing_page_1777069272386.png)
 
-**Live Demo**: [https://cyberguardian-ai.vercel.app](https://cyberguardian-ai.vercel.app) (Frontend) + Local Backend
+CyberGuardian is a live, interpretable AI-driven cyber defense platform built for the **Athernex Hackathon** by team **Inari**. It visualizes sophisticated network attacks, evaluates threat actors' intent, estimates breach pressure across security zones, and generates autonomous response recommendations—all rendered in a high-fidelity, real-time command console.
 
-## Quick Start
+![Network Topology](/home/abhi/.gemini/antigravity/brain/417f55d4-b15f-4180-a6b6-06895f282368/dashboard_network_topology_1777069292422.png)
 
-### Prerequisites
+## Core Features
 
-- **Python 3.11** ([Download](https://www.python.org/downloads/release/python-3110/))
-- **Node.js 20+** ([Download](https://nodejs.org/))
-- **Git**
+- **Live Attack Simulation**: Simulates red-vs-blue engagements with realistic threat models (Ransomware, APTs, Data Exfiltration).
+- **Interactive 3D Network Topology**: Dynamic visualization of network zones (DMZ, APP, DB, Workstations), nodes, and traffic flows.
+- **Explainable AI Pipeline**: A multi-stage threat intelligence pipeline that makes AI decisions transparent—from Intent Vector analysis to Autonomy Budgeting.
+  ![Threat Pipeline](/home/abhi/.gemini/antigravity/brain/417f55d4-b15f-4180-a6b6-06895f282368/threat_pipeline_page_1777069396169.png)
+- **Node & Docker Management**: Deep integration with underlying infrastructure. View live logs, metrics, modify labels, and restart/stop nodes dynamically.
+- **Narrative Reporting**: Generates comprehensive, exportable (`.txt`) security incident reports using LLMs (NVIDIA NeMo/Llama 3).
+- **URL Security Scanner**: Built-in malicious URL and domain reputation analysis.
 
-### 1. Clone & Setup Backend
+## Architecture & Tech Stack
+
+CyberGuardian employs a modern decoupled architecture:
+
+### Frontend (Client-Side)
+Building a highly performant, visually stunning SOC terminal.
+- **React 18** and **TypeScript** (via Vite)
+- **Three.js / React Three Fiber** for real-time 3D network visualizations
+- **Tailwind CSS** (minimal usage, mostly custom vanilla CSS for the retro-futuristic aesthetic)
+- **Lucide React** for iconography
+
+### Backend (Server-Side)
+Managing simulation states, node orchestration, and LLM integrations.
+- **Python 3.10+**
+- **FastAPI / Uvicorn** for high-performance async API endpoints
+- **Docker SDK** for local container lifecycle management
+- **NVIDIA API / OpenAI / Anthropic** LLM integrations for report generation
+
+## Setup & Execution (Linux / Arch)
+
+To run the CyberGuardian environment locally:
+
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+ and `npm`
+- Docker (optional, but required for the Docker integration page)
+- An LLM API Key (e.g., NVIDIA, set in `backend/.env` as `NVIDIA_API_KEY`)
+
+### 2. Start the Backend (API & Node Simulation)
 
 ```bash
-git clone https://github.com/Abhishekgit01/CyberGuardian-AI.git
-cd CyberGuardian-AI
-
-# Create virtual environment
-python3.11 -m venv backend/venv
-
-# Activate (Linux/Mac)
-source backend/venv/bin/activate
-
-# Activate (Windows)
-backend\venv\Scripts\activate
-
-# Install dependencies
 cd backend
+python3 -m venv .venv
+# For bash/zsh: source .venv/bin/activate
+# For fish: source .venv/bin/activate.fish
+
 pip install -r requirements.txt
 
-# Start backend
-cd ..
-python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8001
+# Start the Node Servers simulation first
+python node_servers.py &
+
+# Start the main FastAPI backend
+python _start_server.py &
 ```
+*The backend API will run on `http://127.0.0.1:8001`.*
 
-**Backend should now be running at**: `http://localhost:8001`
+### 3. Start the Frontend (UI)
 
-### 2. Setup Frontend (New Terminal)
-
+Open a new terminal window:
 ```bash
-cd CyberGuardian-AI
-
-# Install dependencies
+# From the project root
 npm install
-
-# Start dev server
 npm run dev
 ```
+*The frontend development server will start on `http://localhost:5173`.*
 
-**Frontend should now be running at**: `http://localhost:5173`
+### 4. Access the Platform
+Navigate to `http://localhost:5173` in your browser. Click **Open Console** to enter the live simulation. If prompted, click **Connect Live Stream** to sync the visualizer with the backend telemetry.
 
-### 3. Open in Browser
+## System Interfaces
 
-Navigate to `http://localhost:5173` and click "Try Demo" to start the simulation.
+### Network Infrastructure & Docker Management
+CyberGuardian provides direct command and control over the network infrastructure. If physical Docker containers are running (tagged with `cyberguardian.zone`), they will appear here. Otherwise, the simulated Python nodes can be controlled.
+![Infrastructure Management](/home/abhi/.gemini/antigravity/brain/417f55d4-b15f-4180-a6b6-06895f282368/docker_nodes_page_1777069367699.png)
 
-## Architecture
+### Automated Field Reports
+The system distills technical telemetry into executive-ready incident reports.
+![Field Report](/home/abhi/.gemini/antigravity/brain/417f55d4-b15f-4180-a6b6-06895f282368/field_report_page_1777069467367.png)
 
-```
-┌─────────────────┐     WebSocket/HTTP      ┌─────────────────┐
-│   React Frontend│  ←──────────────────→   │  FastAPI Backend│
-│   (Port 5173)   │                       │   (Port 8001)   │
-└─────────────────┘                       └─────────────────┘
-                                                │
-                    ┌───────────────────────────┼───────────┐
-                    │                           │           │
-            ┌───────▼────────┐        ┌────────▼─────┐   ┌▼──────────┐
-            │  RL Environment│        │  Detection   │   │  Agents   │
-            │  (Gymnasium)   │        │  Pipeline    │   │  (PPO/LLM)│
-            └────────────────┘        └──────────────┘   └───────────┘
-```
-
-## Project Structure
-
-```
-cyberguardian-ai/
-├── backend/
-│   ├── src/
-│   │   ├── api/              # FastAPI routes
-│   │   ├── agents/           # RL agents (Red/Blue)
-│   │   ├── detection/        # Threat detection
-│   │   ├── environment/      # CyberSecurityEnv
-│   │   ├── simulation/       # Log generation
-│   │   └── ...
-│   ├── tests/                # Unit tests
-│   └── venv/                 # Python virtual env
-├── src/
-│   ├── components/           # React components
-│   ├── pages/                # Page components
-│   └── store/                # State management
-├── dist/                     # Built frontend
-└── README.md
-```
-
-## Troubleshooting
-
-### Backend Issues
-
-**Error: `ModuleNotFoundError: No module named 'fastapi'`**
-```bash
-cd backend
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-pip install -r requirements.txt
-```
-
-**Error: `ImportError: cannot import name 'CyberSecurityEnv'`**
-Make sure you're running from the project root:
-```bash
-cd /path/to/CyberGuardian-AI
-python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8001
-```
-
-**Backend not responding**
-Check if port 8001 is in use:
-```bash
-lsof -i :8001  # Mac/Linux
-netstat -ano | findstr 8001  # Windows
-```
-Kill existing process or use a different port:
-```bash
-python -m uvicorn backend.src.api.main:app --host 0.0.0.0 --port 8002
-```
-
-### Frontend Issues
-
-**White screen / blank page**
-1. Check backend is running: `curl http://localhost:8001/`
-2. Check browser console (F12) for errors
-3. Try clearing browser cache: Ctrl+Shift+R
-4. Rebuild: `npm run build && npm run preview`
-
-**Error: `Cannot find module '@splinetool/react-spline'`**
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**Vite not starting / port in use**
-```bash
-# Kill existing vite processes
-pkill -f vite  # Mac/Linux
-taskkill /F /IM node.exe  # Windows
-
-# Or use different port
-npm run dev -- --port 5174
-```
-
-### Connection Issues
-
-**Frontend can't connect to backend**
-1. Check both servers are running
-2. Verify URLs:
-   - Frontend: `http://localhost:5173`
-   - Backend: `http://localhost:8001`
-3. In the app, go to Settings and check "Backend URL"
-4. Try setting to `http://127.0.0.1:8001` instead of `localhost`
-
-## What You See On Screen
-
-### Live War Room
-
-- **Network Map**: 20 interconnected nodes showing the cyber battlefield
-- **Red Threats**: Compromised hosts (attacker positions)
-- **Blue Defenses**: Protected/isolated hosts
-- **Threat Radar**: Circular scanner showing hottest danger zones
-- **Kill Chain**: Visual timeline of attack progression
-
-### Neural Pipeline
-
-Real-time AI decision visualization:
-- **Intent Vector**: What the attacker is trying to do
-- **Drift Detect**: When attack patterns change
-- **Attack Graph**: Shortest path to critical assets
-- **Shadow Branches**: Alternative defense strategies evaluated
-
-### APT Attribution
-
-Identifies which hacker group the attack resembles:
-- Similarity matching against known APT profiles
-- Confidence scoring
-- Historical attack pattern comparison
-
-## API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Health check |
-| `/api/simulation/create` | POST | Create new simulation |
-| `/api/simulation/{id}/step` | POST | Advance one step |
-| `/api/simulation/{id}/reset` | POST | Reset simulation |
-| `/api/detection/alerts` | GET | Get all alerts |
-| `/api/agents/info` | GET | Agent metrics |
-| `/docs` | GET | Swagger UI |
-
-## Development
-
-### Running Tests
-
-```bash
-cd backend
-source venv/bin/activate
-python -m pytest tests/ -v
-```
-
-### Building for Production
-
-```bash
-# Frontend
-npm run build
-
-# Serve dist/ folder
-npm run preview
-```
-
-## Tech Stack
-
-**Backend**
-- FastAPI (async web framework)
-- Gymnasium (RL environments)
-- Stable-Baselines3 (PPO agents)
-- NetworkX (graph analysis)
-- NumPy/Pandas (data processing)
-
-**Frontend**
-- React 19 + TypeScript
-- Vite (build tool)
-- Three.js (3D visualization)
-- Spline (3D scenes)
-- TailwindCSS (styling)
-
-## License
-
-MIT License - see LICENSE file for details.
-
-## 30-Second Pitch
-
-"Imagine a building with 20 rooms and one burglar trying to reach the safe. We trained one AI to play the burglar and another AI to play the guard a million times, so now the guard has seen almost every trick before. Instead of showing boring logs after the damage is done, our app shows the attack live, predicts where the burglar goes next, tells you how much time is left, and gives the team a clear plan to stop it."
+---
+*Developed by Team Inari tailored specifically for the Athernex hackathon environment.*

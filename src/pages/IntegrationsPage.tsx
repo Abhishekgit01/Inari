@@ -4,23 +4,38 @@ import {
   Key, Link2, Loader2, Monitor, Network, Plug, Radio, Shield,
   Trash2, UserCheck, XCircle,
 } from 'lucide-react';
+import { FALLBACK_ENTERPRISE_PATHWAYS, type EnterprisePathwaysResponse } from '../lib/enterprise';
 import { useSimulationStore } from '../store/simulationStore';
+import { MagicBentoGrid, BentoCard } from '../components/ui/MagicBento';
 
 /* ── tiny helpers ──────────────────────────────────────────────────────── */
+const ENTERPRISE_API_KEY_STORAGE = 'athernex_api_key';
+
+const getStoredEnterpriseApiKey = () =>
+  typeof window === 'undefined'
+    ? 'ath_local_admin'
+    : window.localStorage.getItem(ENTERPRISE_API_KEY_STORAGE) || 'ath_local_admin';
+
 const api = (path: string, opts?: RequestInit) => {
   const base = useSimulationStore.getState().apiBaseUrl;
-  return fetch(`${base}${path}`, { ...opts, headers: { 'Content-Type': 'application/json', ...opts?.headers } });
+  return fetch(`${base}${path}`, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': getStoredEnterpriseApiKey(),
+      ...opts?.headers,
+    },
+  });
 };
 
 function GlassCard({ children, title, icon: Icon }: { children: React.ReactNode; title: string; icon: React.ElementType }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-[rgba(3,13,26,0.55)] p-5 backdrop-blur-md" style={{ boxShadow: '0 0 24px rgba(0,229,255,0.04)' }}>
+    <BentoCard label={title}>
       <div className="flex items-center gap-2 mb-4">
         <Icon size={16} className="text-cyan-400" />
-        <h3 className="text-sm font-semibold text-white/90" style={{ fontFamily: '"Orbitron", monospace' }}>{title}</h3>
       </div>
       {children}
-    </div>
+    </BentoCard>
   );
 }
 
@@ -48,8 +63,10 @@ export function IntegrationsPage() {
   const [connectors, setConnectors] = useState<any[]>([]);
   const [soarPending, setSoarPending] = useState<any[]>([]);
   const [soarLog, setSoarLog] = useState<any[]>([]);
-  const [apiKey, setApiKey] = useState('');
+  const [enterprise, setEnterprise] = useState<EnterprisePathwaysResponse>(FALLBACK_ENTERPRISE_PATHWAYS);
+  const [apiKey, setApiKey] = useState(() => getStoredEnterpriseApiKey());
   const [loading, setLoading] = useState(false);
+  const [connectorPullingId, setConnectorPullingId] = useState<string | null>(null);
 
   // connector form
   const [connVendor, setConnVendor] = useState('splunk');
@@ -65,11 +82,17 @@ export function IntegrationsPage() {
   // webhook test
   const [webhookVendor, setWebhookVendor] = useState('splunk');
   const [webhookPayload, setWebhookPayload] = useState('[{"host":"WEB-01","type":"brute_force","severity":"critical","source":"10.0.10.5","target":"10.0.0.11"}]');
+  const [remoteUrl, setRemoteUrl] = useState('');
+  const [remoteVendor, setRemoteVendor] = useState('generic');
+  const [remoteApiHeader, setRemoteApiHeader] = useState('Authorization');
+  const [remoteApiKey, setRemoteApiKey] = useState('');
+  const [remoteHeaders, setRemoteHeaders] = useState('');
 
   // streaming
   const [streamBroker, setStreamBroker] = useState('kafka');
   const [streamUrl, setStreamUrl] = useState('');
   const [streamTopic, setStreamTopic] = useState('athernex-security-events');
+  const [streamPayload, setStreamPayload] = useState('[{"host":"IDP-01","type":"c2_beacon","severity":"high","source":"203.0.113.44","target":"10.0.2.9"}]');
 
   // telemetry
   const [telemetryPayload, setTelemetryPayload] = useState('[{"hostname":"WS-05","event_type":"process","severity":"medium","process_name":"cmd.exe","pid":4321,"username":"admin"}]');
@@ -87,22 +110,27 @@ export function IntegrationsPage() {
     setLoading(true);
     try {
       const headers: Record<string, string> = apiKey ? { 'X-API-Key': apiKey } : {};
-      const [statusRes, connRes, soarPRes, soarLRes] = await Promise.all([
+      const [statusRes, connRes, soarPRes, soarLRes, enterpriseRes] = await Promise.all([
         api('/api/integrations/status').then((r) => r.json()).catch(() => ({})),
         api('/api/connectors/siem', { headers }).then((r) => r.json()).catch(() => ({ connectors: [] })),
         api('/api/soar/pending', { headers }).then((r) => r.json()).catch(() => ({ pending: [] })),
         api('/api/soar/log', { headers }).then((r) => r.json()).catch(() => ({ actions: [] })),
+        api('/api/enterprise/pathways').then((r) => r.json()).catch(() => FALLBACK_ENTERPRISE_PATHWAYS),
       ]);
       setStatus(statusRes);
       setConnectors(connRes.connectors || []);
       setSoarPending(soarPRes.pending || []);
       setSoarLog(soarLRes.actions || []);
+      setEnterprise(enterpriseRes?.pathways?.length ? enterpriseRes : FALLBACK_ENTERPRISE_PATHWAYS);
     } finally {
       setLoading(false);
     }
   }, [apiKey, apiBaseUrl]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    window.localStorage.setItem(ENTERPRISE_API_KEY_STORAGE, apiKey || 'ath_local_admin');
+  }, [apiKey]);
 
   /* ── actions ─────────────────────────────────────────────────────── */
   const registerConnector = async () => {
@@ -120,19 +148,63 @@ export function IntegrationsPage() {
     void refresh();
   };
 
+  const pullConnector = async (id: string) => {
+    setConnectorPullingId(id);
+    try {
+      const headers: Record<string, string> = {};
+      if (apiKey) headers['X-API-Key'] = apiKey;
+      const res = await api(`/api/connectors/siem/${id}/pull`, { method: 'POST', headers });
+      const data = await res.json();
+      alert(`Connector pull: ${data.status} — ${data.event_count || 0} events bridged into the War Room`);
+      void refresh();
+    } finally {
+      setConnectorPullingId(null);
+    }
+  };
+
   const testWebhook = async () => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-SIEM-Vendor': webhookVendor };
     if (apiKey) headers['X-API-Key'] = apiKey;
-    const res = await api('/api/webhooks/siem', { method: 'POST', headers, body: webhookPayload });
+    const res = await api('/api/webhooks/ingest', { method: 'POST', headers, body: webhookPayload });
     const data = await res.json();
     alert(`Webhook result: ${data.status} — ${data.message || data.detail || 'OK'}`);
+    void refresh();
+  };
+
+  const ingestRemoteUrl = async () => {
+    let parsedHeaders: Record<string, string> = {};
+    if (remoteHeaders.trim()) {
+      try {
+        parsedHeaders = JSON.parse(remoteHeaders);
+      } catch {
+        alert('Remote headers must be valid JSON');
+        return;
+      }
+    }
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-API-Key'] = apiKey;
+    const res = await api('/api/ingest/url', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        url: remoteUrl,
+        vendor: remoteVendor,
+        headers: parsedHeaders,
+        api_key: remoteApiKey,
+        api_key_header: remoteApiHeader,
+      }),
+    });
+    const data = await res.json();
+    alert(`Remote feed: ${data.status} — ${data.event_count || 0} events ingested from ${data.filename || remoteUrl}`);
     void refresh();
   };
 
   const createSoarAction = async () => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (apiKey) headers['X-API-Key'] = apiKey;
-    await api('/api/soar/action', { method: 'POST', headers, body: JSON.stringify({ action_type: soarAction, target: soarTarget, reason: soarReason, auto_execute: soarAutoExec, channels: ['slack', 'teams'] }) });
+    const res = await api('/api/soar/action', { method: 'POST', headers, body: JSON.stringify({ action_type: soarAction, target: soarTarget, reason: soarReason, auto_execute: soarAutoExec, channels: ['slack', 'teams'] }) });
+    const data = await res.json();
+    alert(`SOAR action: ${data.status} — ${data.policy_reason || data.action_type || 'Policy applied'}`);
     setSoarTarget(''); setSoarReason('');
     void refresh();
   };
@@ -167,6 +239,15 @@ export function IntegrationsPage() {
     const data = await res.json();
     alert(`Stream configured: ${data.consumer_id || data.detail || 'OK'}`);
     setStreamUrl('');
+    void refresh();
+  };
+
+  const pushStreamSample = async () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (apiKey) headers['X-API-Key'] = apiKey;
+    const res = await api('/api/streaming/push', { method: 'POST', headers, body: streamPayload });
+    const data = await res.json();
+    alert(`Streaming result: ${data.status} — ${data.message || `${data.buffer_size || 0} events buffered`}`);
     void refresh();
   };
 
@@ -209,13 +290,14 @@ export function IntegrationsPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 p-4">
+      <MagicBentoGrid className="grid-cols-1">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Plug size={22} className="text-cyan-400" />
           <div>
             <h1 className="text-lg font-bold text-white" style={{ fontFamily: '"Orbitron", monospace' }}>Enterprise Integrations</h1>
-            <p className="text-[11px] text-white/50">Connect your SIEM, streaming, SOAR & SSO infrastructure</p>
+            <p className="text-[11px] text-white/50">Connect your SIEM, streaming, SOAR & SSO infrastructure, then bridge it directly into the live War Room.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -230,7 +312,7 @@ export function IntegrationsPage() {
           { label: 'SIEM Connectors', value: `${status.siem_connectors?.active || 0} / ${status.siem_connectors?.total || 0}`, icon: Database },
           { label: 'Stream Consumers', value: `${status.stream_consumers?.active || 0} / ${status.stream_consumers?.total || 0}`, icon: Radio },
           { label: 'SOAR Pending', value: status.soar?.pending_approvals ?? '—', icon: Shield },
-          { label: 'API Keys', value: status.api_keys?.total ?? '—', icon: Key },
+          { label: 'URL Reports', value: status.url_security?.reports_available ?? '—', icon: Key },
         ].map((card) => (
           <div key={card.label} className="rounded-lg border border-white/[0.05] bg-[rgba(3,13,26,0.4)] p-3">
             <div className="flex items-center gap-1.5 text-[10px] text-white/40"><card.icon size={11} />{card.label}</div>
@@ -239,7 +321,62 @@ export function IntegrationsPage() {
         ))}
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <GlassCard title="How Companies Use Athernex For Real" icon={Plug}>
+        <div className="space-y-4">
+          <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">Recommended first step</span>
+              <code className="rounded-full bg-cyan-500/10 px-2 py-1 text-[10px] text-cyan-200">
+                {enterprise.recommended_first_step.backend_endpoint}
+              </code>
+            </div>
+            <div className="mt-2 text-sm font-semibold text-white">{enterprise.recommended_first_step.title}</div>
+            <p className="mt-2 text-sm leading-7 text-white/65">{enterprise.recommended_first_step.why}</p>
+            <div className="mt-2 text-[11px] text-white/40">Frontend entry: {enterprise.recommended_first_step.frontend_route}</div>
+            <div className="mt-2 text-[11px] text-cyan-300">Anything ingested here now appears in the live War Room feed at <span className="font-mono">/live</span>.</div>
+            <div className="mt-2 text-[11px] text-white/50">Connector polling worker: {status.siem_connectors?.polling_running ? 'running in background' : 'idle'}</div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+            {enterprise.pathways.map((pathway) => (
+              <div key={pathway.id} className="rounded-xl border border-white/[0.06] bg-[rgba(3,5,15,0.4)] p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">{pathway.model}</div>
+                    <div className="mt-1 text-sm font-semibold text-white">{pathway.title}</div>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-white/60">
+                    {pathway.maturity}
+                  </span>
+                </div>
+                <p className="mt-3 text-xs leading-6 text-white/60">{pathway.how_companies_use_it}</p>
+                <div className="mt-3 text-[10px] text-white/40">Frontend: {pathway.frontend_routes.join(' · ')}</div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {pathway.backend_endpoints.slice(0, 3).map((endpoint) => (
+                    <code key={endpoint} className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70">
+                      {endpoint}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+            {enterprise.current_vs_target.map((row) => (
+              <div key={row.feature_area} className="rounded-xl border border-white/[0.06] bg-[rgba(3,5,15,0.34)] p-4">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-cyan-300">{row.feature_area}</div>
+                <div className="mt-3 text-[11px] leading-6 text-white/55">Now: {row.current_demo_state}</div>
+                <div className="mt-3 text-[11px] leading-6 text-white/80">Target: {row.target_enterprise_state}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+
+      </MagicBentoGrid>
+
+      <MagicBentoGrid className="grid-cols-1 lg:grid-cols-2">
         {/* 1. SIEM Connectors */}
         <GlassCard title="SIEM / XDR Connectors" icon={Database}>
           <div className="space-y-3">
@@ -260,8 +397,18 @@ export function IntegrationsPage() {
                       <span className="text-[11px] font-semibold text-white/80">{c.vendor.toUpperCase()}</span>
                       <span className="ml-2 text-[10px] text-white/40">{c.api_url || 'No URL'}</span>
                       <span className="ml-2"><StatusBadge status={c.status} /></span>
+                      <div className="mt-1 text-[10px] text-white/35">
+                        Poll every {c.poll_interval_seconds || 60}s · Ingested {c.events_ingested || 0} events · Last poll {c.last_poll || 'never'}
+                      </div>
+                      {c.last_error ? <div className="mt-1 text-[10px] text-red-300/80">Last error: {c.last_error}</div> : null}
                     </div>
-                    <button className={btnDanger} onClick={() => removeConnector(c.connector_id)}><Trash2 size={10} />Remove</button>
+                    <div className="flex items-center gap-2">
+                      <button className={btnPrimary} onClick={() => pullConnector(c.connector_id)}>
+                        {connectorPullingId === c.connector_id ? <Loader2 size={10} className="animate-spin" /> : <ArrowRight size={10} />}
+                        Pull Now
+                      </button>
+                      <button className={btnDanger} onClick={() => removeConnector(c.connector_id)}><Trash2 size={10} />Remove</button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -281,12 +428,33 @@ export function IntegrationsPage() {
             <textarea className={inputCls} rows={4} value={webhookPayload} onChange={(e) => setWebhookPayload(e.target.value)} placeholder="JSON payload" />
             <button className={btnPrimary} onClick={testWebhook}><ArrowRight size={11} />Push & Ingest</button>
             <div className="text-[10px] text-white/40">
+              Recommended endpoint: <span className="text-cyan-300">POST /api/webhooks/ingest</span>
+            </div>
+            <div className="text-[10px] text-white/40">
               Buffer: {status.webhook?.buffer_size ?? 0} / {status.webhook?.threshold ?? 5} events
             </div>
           </div>
         </GlassCard>
 
-        {/* 3. SOAR Actions */}
+        {/* 3. Remote URL Feed */}
+        <GlassCard title="Pull Threat Data From Any URL" icon={Link2}>
+          <div className="space-y-3">
+            <input className={inputCls} placeholder="https://customer-feed.example.com/security/high-severity.json" value={remoteUrl} onChange={(e) => setRemoteUrl(e.target.value)} />
+            <div className="grid grid-cols-2 gap-2">
+              <select className={inputCls} value={remoteVendor} onChange={(e) => setRemoteVendor(e.target.value)}>
+                {['generic', 'splunk', 'sentinel', 'crowdstrike'].map((v) => <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>)}
+              </select>
+              <input className={inputCls} placeholder="Remote auth header" value={remoteApiHeader} onChange={(e) => setRemoteApiHeader(e.target.value)} />
+            </div>
+            <input className={inputCls} placeholder="Remote API key/token (optional)" value={remoteApiKey} onChange={(e) => setRemoteApiKey(e.target.value)} />
+            <textarea className={inputCls} rows={3} value={remoteHeaders} onChange={(e) => setRemoteHeaders(e.target.value)} placeholder='Optional headers JSON, e.g. {"X-Tenant":"acme-prod"}' />
+            <button className={btnPrimary} onClick={ingestRemoteUrl}><ArrowRight size={11} />Fetch URL & Bridge</button>
+            <div className="text-[10px] text-white/40">Use this for signed URLs, customer-hosted JSON/CSV feeds, S3 exports, or vendor APIs exposed over HTTPS.</div>
+            <a href="/url-security" className="text-[10px] text-cyan-300">Open the passive hardening review page</a>
+          </div>
+        </GlassCard>
+
+        {/* 4. SOAR Actions */}
         <GlassCard title="SOAR Automated Response" icon={Shield}>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
@@ -340,7 +508,7 @@ export function IntegrationsPage() {
           </div>
         </GlassCard>
 
-        {/* 4. Network Topology Builder */}
+        {/* 5. Network Topology Builder */}
         <GlassCard title="Network Topology Builder" icon={Network}>
           <div className="space-y-3">
             <input className={inputCls} placeholder="Network name" value={netName} onChange={(e) => setNetName(e.target.value)} />
@@ -353,7 +521,7 @@ export function IntegrationsPage() {
           </div>
         </GlassCard>
 
-        {/* 5. Streaming Pipeline */}
+        {/* 6. Streaming Pipeline */}
         <GlassCard title="Real-Time Streaming (Kafka/RabbitMQ)" icon={Radio}>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
@@ -363,23 +531,27 @@ export function IntegrationsPage() {
               <input className={inputCls} placeholder="Broker URL" value={streamUrl} onChange={(e) => setStreamUrl(e.target.value)} />
               <input className={inputCls} placeholder="Topic" value={streamTopic} onChange={(e) => setStreamTopic(e.target.value)} />
             </div>
-            <button className={btnPrimary} onClick={configureStream}><Radio size={11} />Configure Consumer</button>
+            <div className="flex flex-wrap gap-2">
+              <button className={btnPrimary} onClick={configureStream}><Radio size={11} />Configure Consumer</button>
+              <button className={btnPrimary} onClick={pushStreamSample}><ArrowRight size={11} />Push Sample Events</button>
+            </div>
+            <textarea className={inputCls} rows={3} value={streamPayload} onChange={(e) => setStreamPayload(e.target.value)} placeholder="Streaming sample JSON" />
             <div className="text-[10px] text-white/40">
               Buffer: {status.stream_consumers?.buffer_size ?? 0} events | Consumers: {status.stream_consumers?.total ?? 0}
             </div>
           </div>
         </GlassCard>
 
-        {/* 6. Endpoint Telemetry */}
+        {/* 7. Endpoint Telemetry */}
         <GlassCard title="Endpoint Agent Telemetry" icon={Monitor}>
           <div className="space-y-3">
             <textarea className={inputCls} rows={3} value={telemetryPayload} onChange={(e) => setTelemetryPayload(e.target.value)} placeholder="Agent telemetry JSON" />
             <button className={btnPrimary} onClick={pushTelemetry}><Monitor size={11} />Push Telemetry</button>
-            <div className="text-[10px] text-white/40">Compatible with Wazuh, osquery, Fluentd forwarders</div>
+            <div className="text-[10px] text-white/40">Compatible with Wazuh, osquery, Fluentd forwarders. Telemetry appears in the War Room as an external-source event stream.</div>
           </div>
         </GlassCard>
 
-        {/* 7. SSO / Identity */}
+        {/* 8. SSO / Identity */}
         <GlassCard title="SSO / Identity Integration" icon={UserCheck}>
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-2">
@@ -394,7 +566,7 @@ export function IntegrationsPage() {
           </div>
         </GlassCard>
 
-        {/* 8. API Keys & Export */}
+        {/* 9. API Keys & Export */}
         <GlassCard title="API Keys & Data Export" icon={Key}>
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -414,7 +586,10 @@ export function IntegrationsPage() {
             <div className="border-t border-white/[0.06] pt-3 mt-3">
               <div className="text-[10px] text-white/40 mb-2">Integration Endpoints</div>
               <div className="space-y-1 text-[10px] font-mono text-white/50">
-                <div>POST /api/webhooks/siem <span className="text-white/30">— vendor-aware webhook</span></div>
+                <div>POST /api/webhooks/ingest <span className="text-white/30">— recommended secure ingest endpoint</span></div>
+                <div>POST /api/webhooks/siem <span className="text-white/30">— vendor-aware compatibility alias</span></div>
+                <div>POST /api/connectors/siem/{"{connector_id}"}/pull <span className="text-white/30">— pull directly from a registered connector</span></div>
+                <div>POST /api/ingest/url <span className="text-white/30">— fetch remote CSV/JSON from any HTTPS URL</span></div>
                 <div>POST /api/streaming/push <span className="text-white/30">— streaming buffer</span></div>
                 <div>POST /api/agents/telemetry <span className="text-white/30">— endpoint agents</span></div>
                 <div>POST /api/sso/authenticate <span className="text-white/30">— SSO login</span></div>
@@ -423,7 +598,7 @@ export function IntegrationsPage() {
             </div>
           </div>
         </GlassCard>
-      </div>
+      </MagicBentoGrid>
     </div>
   );
 }

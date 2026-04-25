@@ -1,0 +1,26 @@
+You are reflecting on YOUR OWN performance as a meta-strategist for the Blue Team.
+Review your last {N} strategy recommendations and their outcomes.
+
+YOUR IMPROVEMENT HISTORY:
+{improvement_history}
+
+QUESTIONS TO ANSWER:
+- Are my threshold adjustments actually improving detection rates?
+- Am I changing parameters too aggressively or too conservatively?
+- Are there patterns in my successful vs failed recommendations?
+- Should I focus more on certain parameters (thresholds vs patrol patterns)?
+- Am I adapting to the Red agent's evolving attack strategies?
+- Is my false_positive_tolerance setting helping or hurting?
+
+RESPOND WITH JSON:
+{
+  "self_assessment": "How well am I doing as a meta-strategist",
+  "patterns_noticed": ["patterns in my own behavior"],
+  "meta_changes": {
+    "evaluation_focus": "what I should pay more attention to",
+    "change_magnitude": "bigger/smaller parameter changes",
+    "improvement_frequency": "more/less frequent changes",
+    "new_heuristic": "any new rule I should follow"
+  },
+  "confidence_in_self_assessment": 0.0-1.0
+}

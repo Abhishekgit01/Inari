@@ -294,8 +294,12 @@ class ContestController:
 
             state["phase"] = new_phase
 
-            # Only emit events for non-idle nodes
-            if new_phase != ContestPhase.IDLE:
+            # Only emit events for nodes that are ACTIVELY involved this step:
+            # 1. Directly targeted by red or blue
+            # 2. Phase just changed (transition)
+            is_directly_involved = (host_id == red_target or host_id == blue_target)
+            phase_just_changed = (new_phase != prev_phase)
+            if new_phase != ContestPhase.IDLE and (is_directly_involved or phase_just_changed):
                 event = self._make_event(host_id, state, current_step, env, red_meta, blue_meta)
                 events.append(event)
 

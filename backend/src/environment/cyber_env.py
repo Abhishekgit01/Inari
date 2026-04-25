@@ -81,6 +81,9 @@ class CyberSecurityEnv(gym.Env):
         self.last_step_logs: list[dict[str, Any]] = []
         self.last_step_correlation_ids: list[str] = []
         self.new_alerts: list[dict[str, Any]] = []
+        # Port liveness tracking — used by 3D graph to show offline nodes
+        self._dead_ports: set[int] = set()
+        self._live_ports: set[int] = set()
 
         return self._get_observation(), self._get_info()
 
@@ -171,6 +174,78 @@ class CyberSecurityEnv(gym.Env):
             f"protects approximately {value:.1f} GB of value, making it attractive for {action_name}."
         )
 
+    def _ping_real_docker_target(self, target: int, action: str):
+        """Sends a real network payload to the node servers to prove the simulation affects real things.
+        Also prints a CLI log line so node_servers.py terminal shows live attack/defense activity."""
+        # Map host IDs 0-14 to ports 8005-8019
+        if target < 0 or target > 14:
+            return
+
+        port = 8005 + target
+        url = f"http://127.0.0.1:{port}/"
+        label = self._host_label(target)
+
+        # Color codes for CLI output
+        RED = "\033[91m"
+        GRN = "\033[92m"
+        YEL = "\033[93m"
+        CYN = "\033[96m"
+        DIM = "\033[2m"
+        RST = "\033[0m"
+        BOLD = "\033[1m"
+
+        action_styles = {
+            "scan":              (RED, "⚡ SCAN"),
+            "exploit":           (RED, "💀 EXPLOIT"),
+            "lateral_move":      (RED, "🔀 LATERAL MOVE"),
+            "exfiltrate":        (RED, "📤 EXFILTRATE"),
+            "beacon":            (RED, "📡 C2 BEACON"),
+            "monitor":           (GRN, "👁  MONITOR"),
+            "isolate":           (GRN, "🔒 ISOLATE"),
+            "investigate":       (GRN, "🔍 INVESTIGATE"),
+            "patch":             (GRN, "🩹 PATCH"),
+            "reset_credentials": (GRN, "🔑 RESET CREDS"),
+            "block_ip":          (GRN, "🚫 BLOCK IP"),
+        }
+        color, symbol = action_styles.get(action, (DIM, f"▸ {action.upper()}"))
+        step_str = f"S{self.current_step:02d}"
+
+        try:
+            import requests
+            headers = {"User-Agent": f"CyberGuardian-AI-{action.upper()}"}
+            if action in ["scan", "exploit", "lateral_move"]:
+                resp = requests.get(url + "vulnerabilities", headers=headers, timeout=0.3)
+            elif action == "exfiltrate":
+                resp = requests.get(url + "attack", headers=headers, timeout=0.3)
+            elif action in ["monitor", "isolate", "investigate"]:
+                resp = requests.head(url, headers=headers, timeout=0.3)
+            elif action in ["patch", "reset_credentials"]:
+                resp = requests.get(url + "reset", headers=headers, timeout=0.3)
+            else:
+                resp = requests.get(url, headers=headers, timeout=0.3)
+
+            status = resp.status_code
+            log_line = (
+                f"  {DIM}[{step_str}]{RST} {color}{BOLD}{symbol}{RST} "
+                f"→ {BOLD}{label}{RST} {DIM}(:{port} HTTP {status}){RST}"
+            )
+            with open("cli_attack_feed.log", "a", encoding="utf-8") as f:
+                f.write(log_line + "\n")
+            
+            # Track this port as alive
+            self._live_ports.discard(port)
+            self._live_ports.add(port)
+        except Exception:
+            log_line = (
+                f"  {DIM}[{step_str}]{RST} {color}{BOLD}{symbol}{RST} "
+                f"→ {BOLD}{label}{RST} {YEL}⬤ OFFLINE{RST} {DIM}(:{port} unreachable){RST}"
+            )
+            with open("cli_attack_feed.log", "a", encoding="utf-8") as f:
+                f.write(log_line + "\n")
+                
+            # Track this port as down
+            self._dead_ports.add(port)
+
     def _execute_red_action(
         self, target: int, action_type: int
     ) -> tuple[float, list[dict[str, Any]], dict[str, Any]]:
@@ -249,6 +324,10 @@ class CyberSecurityEnv(gym.Env):
             "reason": self._red_reason(target_host, action_name),
             "is_false_positive": False,
         }
+        
+        # 🔥 FIRE AT THE REAL DOCKER CONTAINERS
+        self._ping_real_docker_target(target_host, action_name)
+        
         return reward, logs, meta
 
     def _defender_log(self, target: int, action_name: str, success: bool) -> dict[str, Any]:
@@ -338,6 +417,10 @@ class CyberSecurityEnv(gym.Env):
             "reason": self._blue_reason(target, action_name),
             "is_false_positive": is_false_positive,
         }
+        
+        # 🔥 FIRE AT THE REAL DOCKER CONTAINERS
+        self._ping_real_docker_target(target, action_name)
+        
         return reward, logs, meta
 
     def _update_network_state(self) -> None:

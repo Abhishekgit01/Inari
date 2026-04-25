@@ -7,43 +7,43 @@ export default function TechnicalSpecs() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
           <div className="lg:col-span-1">
             <h2 className="text-5xl font-bold text-white mb-8 leading-tight tracking-tighter">
-              Built for the <br />
-              <span className="text-secondary">Architect.</span>
+              Built with <br />
+              <span className="text-secondary">real artifacts.</span>
             </h2>
             <p className="text-on-surface-variant text-lg mb-10 leading-relaxed">
-              Deeply integrated, low-latency infrastructure designed to fit into your existing DevOps pipelines without friction.
+              Instead of polished security theatre, Inari should lean on traceable assets: datasets, model files, explainability layers, and clear boundaries around what is still prototype-grade.
             </p>
-            <button className="flex items-center gap-3 text-primary font-bold text-lg group">
-              <span>API Documentation</span>
+            <a href="/features" className="flex items-center gap-3 text-primary font-bold text-lg group no-underline">
+              <span>See Company Use Cases</span>
               <ArrowRight className="group-hover:translate-x-2 transition-transform" size={24} />
-            </button>
+            </a>
           </div>
 
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-8">
             <SpecCard 
               id="ENGINEERING.01"
-              title="Edge Latency"
-              desc="Global edge nodes ensure inspection adds less than 5ms overhead to your traffic."
-              progress={98}
+              title="Simulation Core"
+              desc="FastAPI, WebSockets, Gymnasium, and battle-state builders drive the red-vs-blue simulation loop."
+              progress={100}
               accent="secondary"
             />
             <SpecCard 
               id="ENGINEERING.02"
-              title="gRPC Integration"
-              desc="Native support for ultra-fast, bidirectional streaming telemetry across microservices."
-              tags={["Kubernetes", "AWS", "GCP"]}
+              title="Detection Stack"
+              desc="ThreatDetector, ConfidenceScorer, and CrossLayerCorrelator provide explainable alert enrichment."
+              tags={["FastAPI", "MITRE", "WebSocket"]}
               accent="primary"
             />
             <SpecCard 
               id="ENGINEERING.03"
-              title="ML Precision"
-              desc="Bayesian-based anomaly scoring with per-user baseline modeling."
+              title="Training Evidence"
+              desc="Benchmark dataset samples and local model artifacts are committed in the repo for inspection."
               accent="tertiary"
             />
             <SpecCard 
               id="ENGINEERING.04"
-              title="SOC2 / GDPR"
-              desc="Fully compliant data residency and encryption at rest/transit protocols."
+              title="Enterprise Rollout"
+              desc="The next serious move is continuous ingestion plus governed response, not just prettier demo screens."
               accent="white"
             />
           </div>

@@ -1,5 +1,20 @@
 from __future__ import annotations
 
+# Load .env before anything else reads env vars
+try:
+    from dotenv import load_dotenv as _load_dotenv
+    _load_dotenv()
+except ImportError:
+    import pathlib as _pl
+    _env = _pl.Path(__file__).resolve().parents[2] / ".env"
+    if _env.exists():
+        for _line in _env.read_text().splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _, _v = _line.partition("=")
+                import os as _os
+                _os.environ.setdefault(_k.strip(), _v.strip())
+
 import csv
 import io
 import json
@@ -9,13 +24,16 @@ import re
 import struct
 import sys
 import uuid
+import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
 import structlog
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -25,7 +43,15 @@ from slowapi.util import get_remote_address
 from .exceptions import CyberGuardianException, SimulationNotFound, InvalidParameter
 
 from .routes.giskard import router as giskard_router
-from .integrations import router as integrations_router
+from .integrations import (
+    router as integrations_router,
+    start_integration_workers,
+    stop_integration_workers,
+)
+try:
+    from ..hyperagents.hyper_router import router as hyper_router
+except ImportError:
+    hyper_router = None
 from .visuals import (
     BLUE_ACTION_COSTS,
     build_alerts,
@@ -35,9 +61,9 @@ from .visuals import (
     build_pipeline_state,
     build_playbook,
     build_step_message,
-    seed_training_metrics,
     update_training_metrics,
 )
+from ..agents.dqn_loader import load_red_dqn, load_blue_dqn, load_training_history
 from .websocket import ConnectionManager
 from ..agents.llm_blue_agent import LLMBlueAgent
 from ..agents.llm_red_agent import LLMRedAgent
@@ -69,7 +95,7 @@ app_state: dict[str, Any] = {
     "connection_manager": ConnectionManager(),
     "episode_counter": 0,
     "playbooks": {},
-    "training_metrics": seed_training_metrics(),
+    "training_metrics": load_training_history() or {"steps_trained": 0, "reward_history": [], "win_rate_history": [], "detection_history": []},
     "latest_simulation_id": None,
     "siem_seed": None,
 }
@@ -77,50 +103,74 @@ app_state: dict[str, Any] = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading models via LLM Proxy...")
-    app_state["red_model"] = LLMRedAgent()
+    # ── Load trained DQN agents (preferred) ────────────────────────────────
+    red_dqn = load_red_dqn()
+    blue_dqn = load_blue_dqn()
+
+    if red_dqn:
+        print(f"Deploying trained Red DQN agent...")
+        app_state["red_model"] = red_dqn
+    else:
+        print("No trained Red DQN found. Using LLM Red agent...")
+        app_state["red_model"] = LLMRedAgent()
+
+    if blue_dqn:
+        print(f"Deploying trained Blue DQN agent...")
+        app_state["blue_model"] = blue_dqn
+    else:
+        print("No trained Blue DQN found. Using LLM Blue agent...")
+        app_state["blue_model"] = LLMBlueAgent()
     app.state.detector = ThreatDetector()
     app.state.scorer = ConfidenceScorer(app.state.detector)
     app.state.correlator = CrossLayerCorrelator()
 
+    # PPO model path kept for backward compat — DQN loader above takes priority
     ppo_path = "blue_ppo_bot"
-    if os.path.exists(f"{ppo_path}.zip"):
-        ppo_path = f"{ppo_path}.zip"
-    elif not os.path.exists(ppo_path):
-        ppo_path = "../blue_ppo_bot"
+    if not blue_dqn and (os.path.exists(ppo_path) or os.path.exists(f"{ppo_path}.zip") or os.path.exists(f"{ppo_path}.zip")):
         if os.path.exists(f"{ppo_path}.zip"):
             ppo_path = f"{ppo_path}.zip"
-
-    if os.path.exists(ppo_path) or os.path.exists(f"{ppo_path}.zip"):
-        print(f"Deploying Autonomous Deep RL Defender from {ppo_path}...")
-        if os.path.isdir(ppo_path):
-            import shutil
-
-            archive_path = f"{ppo_path}.zip"
-            if not os.path.exists(archive_path):
-                print(f"Compressing GitHub directory {ppo_path} into a .zip payload for SB3...")
-                shutil.make_archive(ppo_path, "zip", ppo_path)
-            ppo_path = archive_path
-        elif not ppo_path.endswith(".zip") and os.path.exists(f"{ppo_path}.zip"):
-            ppo_path = f"{ppo_path}.zip"
-        try:
-            from stable_baselines3 import PPO
-        except ImportError as exc:
-            print(f"stable-baselines3 unavailable ({exc}). Falling back to LLM Proxy...")
-            app_state["blue_model"] = LLMBlueAgent()
-        else:
+        elif not os.path.exists(ppo_path):
+            ppo_path = "../blue_ppo_bot"
+            if os.path.exists(f"{ppo_path}.zip"):
+                ppo_path = f"{ppo_path}.zip"
+        if os.path.exists(ppo_path) or os.path.exists(f"{ppo_path}.zip"):
+            print(f"Deploying Autonomous Deep RL Defender from {ppo_path}...")
+            if os.path.isdir(ppo_path):
+                import shutil
+                archive_path = f"{ppo_path}.zip"
+                if not os.path.exists(archive_path):
+                    print(f"Compressing GitHub directory {ppo_path} into a .zip payload for SB3...")
+                    shutil.make_archive(ppo_path, "zip", ppo_path)
+                ppo_path = archive_path
+            elif not ppo_path.endswith(".zip") and os.path.exists(f"{ppo_path}.zip"):
+                ppo_path = f"{ppo_path}.zip"
             try:
-                # Older exported checkpoints may reference NumPy's legacy module path.
+                from stable_baselines3 import PPO
                 sys.modules.setdefault("numpy._core.numeric", np.core.numeric)
                 app_state["blue_model"] = PPO.load(ppo_path)
+                print("PPO Blue agent loaded successfully.")
             except Exception as exc:
-                print(f"Error loading PPO: {exc}. Falling back to LLM Proxy...")
+                print(f"Error loading PPO: {exc}. Using LLM Blue agent.")
                 app_state["blue_model"] = LLMBlueAgent()
-    else:
-        print("PPO Model not found. Falling back to LLM Proxy for Defender...")
-        app_state["blue_model"] = LLMBlueAgent()
+
+    await start_integration_workers()
+
+    # Optional Postgres persistence layer
+    try:
+        from src.persistence.database import init_db
+        await init_db()
+        print("Postgres persistence layer initialized.")
+    except Exception as exc:
+        print(f"Postgres unavailable ({exc}) — running without persistence.")
 
     yield
+    await stop_integration_workers()
+
+    try:
+        from src.persistence.database import close_db
+        await close_db()
+    except Exception:
+        pass
     print("Shutting down...")
 
 
@@ -138,6 +188,29 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 logger = structlog.get_logger()
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    raw_value = os.getenv(name, "").strip()
+    if not raw_value:
+        return default
+    parsed = [item.strip() for item in raw_value.split(",") if item.strip()]
+    return parsed or default
+
+
+DEFAULT_CORS_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3001",
+    "http://localhost:3001",
+]
+DEFAULT_CORS_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+DEFAULT_TRUSTED_HOSTS = ["127.0.0.1", "localhost", "testserver"]
+CORS_ALLOWED_ORIGINS = _env_list("CORS_ALLOWED_ORIGINS", DEFAULT_CORS_ORIGINS)
+CORS_ALLOWED_ORIGIN_REGEX = os.getenv("CORS_ALLOWED_ORIGIN_REGEX", DEFAULT_CORS_ORIGIN_REGEX)
+TRUSTED_HOSTS = _env_list("TRUSTED_HOSTS", DEFAULT_TRUSTED_HOSTS)
 
 # ── Rate Limiter ────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address, default_limits=["60/minute"])
@@ -159,6 +232,8 @@ app = FastAPI(
 app.state.limiter = limiter
 app.include_router(giskard_router)
 app.include_router(integrations_router)
+if hyper_router is not None:
+    app.include_router(hyper_router)
 app.add_exception_handler(SlowAPIRateLimitExceeded, _rate_limit_exceeded_handler)
 
 
@@ -172,20 +247,36 @@ async def cyberguardian_exception_handler(request: Request, exc: CyberGuardianEx
     )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("unhandled_api_error", detail=str(exc), path=str(request.url))
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "INTERNAL_SERVER_ERROR", "detail": "Unexpected server error."}},
+    )
+
+
 # ── Security Headers Middleware ─────────────────────────────────────────────
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or f"req_{uuid.uuid4().hex[:12]}"
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(request_id=request_id, method=request.method, path=request.url.path)
     response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    structlog.contextvars.clear_contextvars()
     return response
 
 
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=TRUSTED_HOSTS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_origin_regex=CORS_ALLOWED_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -217,21 +308,6 @@ def _normalize_agent_action(raw_action: Any, agent: str) -> np.ndarray:
     action[1] = int(action[1]) % 6
     return action
 
-
-def _fallback_red_action(session: dict[str, Any]) -> np.ndarray:
-    env = session["env"]
-    target = env.red_position
-    if env.compromised_hosts:
-        target = max(env.compromised_hosts, key=lambda host: env.network.get_vulnerabilities(host))
-    return np.array([target, 1 if target not in env.compromised_hosts else 2])
-
-
-def _fallback_blue_action(session: dict[str, Any]) -> np.ndarray:
-    env = session["env"]
-    alert_scores = env.network.get_alert_scores()
-    target = int(np.argmax(alert_scores.max(axis=1)))
-    action_type = 5 if alert_scores[target].max() < 0.45 else 1
-    return np.array([target, action_type])
 
 
 def _host_id_from_value(raw: Any, num_hosts: int = 20) -> int | None:
@@ -457,20 +533,24 @@ def _load_siem_seed(filename: str, content: bytes) -> dict[str, Any]:
     }
 
 
-def _apply_siem_seed(session: dict[str, Any]) -> None:
-    seed = app_state.get("siem_seed")
-    if not seed:
-        return
-
+def _materialize_seed_logs(
+    session: dict[str, Any],
+    seed: dict[str, Any],
+    source: str,
+    vendor: str,
+    step_override: int | None = None,
+) -> tuple[list[dict[str, Any]], str]:
     env = session["env"]
     seed_logs: list[dict[str, Any]] = []
+    ingested_at = datetime.now(timezone.utc).isoformat()
+    step_value = session["step"] if step_override is None else step_override
 
     for index, event in enumerate(seed["events"]):
         host_id = int(event["host_id"]) % env.num_hosts
         threat_type = event["threat_type"]
         severity = event["severity"]
         alert_score = float(event["alert_score"])
-        correlation_id = f"UPLOAD-{index:03d}-{host_id}"
+        correlation_id = f"{source.upper()}-{vendor.upper()}-{step_value:03d}-{index:03d}-{host_id}"
 
         if severity in {"high", "critical"}:
             env.compromised_hosts.add(host_id)
@@ -489,8 +569,8 @@ def _apply_siem_seed(session: dict[str, Any]) -> None:
         seed_logs.append(
             {
                 "id": str(uuid.uuid4()),
-                "timestamp": 0,
-                "step": 0,
+                "timestamp": step_value,
+                "step": step_value,
                 "type": log_type,
                 "action_type": log_type,
                 "layer": event["layer"],
@@ -501,19 +581,154 @@ def _apply_siem_seed(session: dict[str, Any]) -> None:
                 "host_id": host_id,
                 "host_label": event["host_label"],
                 "alert_score": round(alert_score, 3),
-                "metadata": {"uploaded_siem": True, "severity": severity, "raw": event["raw"]},
+                "metadata": {
+                    "external_source": source,
+                    "vendor": vendor,
+                    "severity": severity,
+                    "ingested_at": ingested_at,
+                    "raw": event["raw"],
+                },
             }
         )
 
+    return seed_logs, ingested_at
+
+
+def _build_integration_feed_entries(
+    seed: dict[str, Any],
+    seed_logs: list[dict[str, Any]],
+    source: str,
+    vendor: str,
+    ingested_at: str,
+) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for event, log in zip(seed["events"], seed_logs, strict=False):
+        entries.append(
+            {
+                "id": log["id"],
+                "source": source,
+                "vendor": vendor,
+                "host_id": log["host_id"],
+                "host_label": log["host_label"],
+                "threat_type": event["threat_type"],
+                "severity": event["severity"],
+                "alert_score": round(float(event["alert_score"]), 3),
+                "layer": event["layer"],
+                "ingested_at": ingested_at,
+            }
+        )
+    return entries[:24]
+
+
+def _apply_seed_to_session(
+    session: dict[str, Any],
+    seed: dict[str, Any],
+    source: str,
+    vendor: str,
+    *,
+    replace_existing: bool,
+) -> dict[str, Any]:
+    env = session["env"]
+    seed_logs, ingested_at = _materialize_seed_logs(session, seed, source, vendor, step_override=session["step"])
     env.logs.extend(seed_logs)
     env.last_step_logs = seed_logs[-12:]
     env.network.update_alerts(seed_logs)
-    session["alerts"] = build_alerts(seed_logs, 0)
+
+    produced_alerts = build_alerts(seed_logs, session["step"])
+    if replace_existing:
+        session["alerts"] = produced_alerts
+        new_alerts = produced_alerts
+    else:
+        known_alerts = {alert["id"] for alert in session["alerts"]}
+        new_alerts = [alert for alert in produced_alerts if alert["id"] not in known_alerts]
+        session["alerts"].extend(new_alerts)
+
     session["latest_pipeline"] = build_pipeline_state(session, app_state["training_metrics"])
     session["siem_context"] = {
         "filename": seed["filename"],
         "event_count": seed["event_count"],
         "top_threat": seed["top_threat"],
+        "source": source,
+        "vendor": vendor,
+        "ingested_at": ingested_at,
+    }
+    integration_entries = _build_integration_feed_entries(seed, seed_logs, source, vendor, ingested_at)
+    if replace_existing:
+        session["integration_events"] = integration_entries
+    else:
+        existing_ids = {event["id"] for event in session.get("integration_events", [])}
+        appended = [event for event in integration_entries if event["id"] not in existing_ids]
+        session["integration_events"] = [*appended, *session.get("integration_events", [])][:36]
+
+    pipeline_state = session["latest_pipeline"]
+    if replace_existing:
+        _register_playbooks(session, pipeline_state, session["alerts"])
+    else:
+        _register_playbooks(session, pipeline_state, new_alerts)
+    session["latest_briefing"] = build_battle_briefing(session)
+
+    kc_tracker: KillChainTracker = session["kill_chain_tracker"]
+    for log in seed_logs:
+        kc_tracker.ingest_event(log, session["step"])
+    kill_chain = kc_tracker.get_breach_countdown_payload()
+    apt_attribution = format_apt_attribution(kill_chain.get("apt_similarity", {}))
+    network = build_network_graph_state(session)
+    scoreboard = session["contest_controller"].get_scoreboard(env).model_dump()
+
+    return {
+        "new_alerts": new_alerts,
+        "pipeline": pipeline_state,
+        "briefing": session["latest_briefing"],
+        "kill_chain": kill_chain,
+        "apt_attribution": apt_attribution,
+        "network": network,
+        "scoreboard": scoreboard,
+        "events": integration_entries,
+        "ingested_at": ingested_at,
+    }
+
+
+def _apply_siem_seed(session: dict[str, Any]) -> None:
+    seed = app_state.pop("siem_seed", None)
+    if not seed:
+        return
+    _apply_seed_to_session(session, seed, "upload", "uploaded_file", replace_existing=True)
+
+
+async def _bridge_external_seed_to_live_session(seed: dict[str, Any], source: str, vendor: str) -> dict[str, Any]:
+    session = _latest_session()
+    if session is None:
+        return {"bridged": False, "reason": "no_active_session"}
+
+    applied = _apply_seed_to_session(session, seed, source, vendor, replace_existing=False)
+    message = {
+        "type": "integration_event",
+        "simulation_id": session["simulation_id"],
+        "episode_id": session["episode_id"],
+        "step": session["step"],
+        "phase": applied["network"]["phase"],
+        "source": source,
+        "vendor": vendor,
+        "message": f"{vendor} {source} event stream bridged into the live War Room.",
+        "event_count": len(applied["events"]),
+        "top_threat": seed["top_threat"],
+        "hot_hosts": seed["hot_hosts"],
+        "events": applied["events"],
+        "new_alerts": applied["new_alerts"],
+        "network": applied["network"],
+        "pipeline": applied["pipeline"],
+        "briefing": applied["briefing"],
+        "kill_chain": applied["kill_chain"],
+        "apt_attribution": applied["apt_attribution"],
+        "scoreboard": applied["scoreboard"],
+        "ingested_at": applied["ingested_at"],
+    }
+    await app_state["connection_manager"].send_json(session["simulation_id"], _serialize(message))
+    return {
+        "bridged": True,
+        "simulation_id": session["simulation_id"],
+        "alerts_created": len(applied["new_alerts"]),
+        "event_count": len(applied["events"]),
     }
 
 
@@ -560,6 +775,7 @@ def _create_session(num_hosts: int, max_steps: int, scenario: str, simulation_id
         "done": False,
         "history": [],
         "alerts": [],
+        "integration_events": [],
         "playbooks": [],
         "cumulative_rewards": {"red": 0.0, "blue": 0.0},
         "last_rewards": {"red": 0.0, "blue": 0.0},
@@ -621,19 +837,44 @@ def _register_playbooks(session: dict[str, Any], pipeline_state: dict[str, Any],
         app_state["playbooks"][playbook["id"]] = playbook
 
 
+def _refresh_node_liveness(env: Any) -> None:
+    """Fast TCP probe of ports 8005-8019 to detect which node servers are alive/dead.
+    Updates env._dead_ports so the 3D graph reflects real-time node CLI deletions."""
+    import socket
+    dead = set()
+    for host_id in range(min(15, env.num_hosts)):
+        port = 8005 + host_id
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.05)  # 50ms timeout — fast enough for localhost
+        try:
+            result = sock.connect_ex(("127.0.0.1", port))
+            if result != 0:
+                dead.add(port)
+        except Exception:
+            dead.add(port)
+        finally:
+            sock.close()
+    env._dead_ports = dead
+
+
 def _advance_simulation(session: dict[str, Any]) -> dict[str, Any]:
     if session["done"] and session["last_message"] is not None:
         return session["last_message"]
 
+    # Probe real node server ports to detect CLI deletions
+    _refresh_node_liveness(session["env"])
+
     observation = session["observation"]
     try:
         red_raw, _ = app_state["red_model"].predict(observation)
-    except Exception:
-        red_raw = _fallback_red_action(session)
+    except Exception as exc:
+        logger.error(f"Red model predict failed: {exc}")
+        red_raw = np.array([0, 0])
     try:
         blue_raw, _ = app_state["blue_model"].predict(observation)
-    except Exception:
-        blue_raw = _fallback_blue_action(session)
+    except Exception as exc:
+        logger.error(f"Blue model predict failed: {exc}")
+        blue_raw = np.array([0, 0])
 
     red_action = _normalize_agent_action(red_raw, "red")
     blue_action = _normalize_agent_action(blue_raw, "blue")
@@ -712,6 +953,8 @@ def _advance_simulation(session: dict[str, Any]) -> dict[str, Any]:
 
     session["history"].append(message)
     session["last_message"] = message
+    session["kill_chain"] = message.get("kill_chain")
+    session["apt_attribution"] = message.get("apt_attribution")
 
     if session["done"]:
         update_training_metrics(app_state["training_metrics"], session)
@@ -735,7 +978,31 @@ async def login(body: dict | None = None):
     body = body or {}
     username = body.get("username", "operator")
     token = f"ini_{username}_{uuid.uuid4().hex[:12]}"
-    return {"token": token, "alias": username, "operatorId": username}
+    return {"token": token, "alias": username, "operatorId": username, "onboarded": True}
+
+
+@app.get("/api/nvidia/status")
+async def nvidia_status():
+    """Check if NVIDIA API key is configured and reachable."""
+    nvidia_key = os.getenv("NVIDIA_API_KEY", "")
+    configured = bool(nvidia_key and nvidia_key != "nvapi-PASTE_YOUR_KEY_HERE")
+    model = os.getenv("REPORT_LLM_MODEL", "nvidia/llama-3.1-nemotron-70b-instruct")
+    result = {"configured": configured, "model": model, "provider": "nvidia"}
+    if configured:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=8) as client:
+                resp = await client.post(
+                    "https://integrate.api.nvidia.com/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {nvidia_key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": [{"role": "user", "content": "ping"}], "max_tokens": 5},
+                )
+                result["reachable"] = resp.status_code == 200
+                result["status_code"] = resp.status_code
+        except Exception as exc:
+            result["reachable"] = False
+            result["error"] = str(exc)
+    return result
 
 
 @app.post("/api/simulation/upload-siem")
@@ -758,10 +1025,17 @@ async def upload_siem_feed(siem_file: UploadFile = File(...)):
     description="Create a new adversarial simulation with configurable parameters.",
     responses={200: {"description": "Simulation created"}, 422: {"description": "Invalid parameters"}, 429: {"description": "Rate limit exceeded"}},
 )
-@limiter.limit("10/minute")
+@limiter.limit("100/minute")
 async def create_simulation(request: Request, body: CreateSimulationRequest | None = None):
     body = body or CreateSimulationRequest()
-    session = _create_session(body.num_hosts, body.max_steps, body.scenario)
+    loop = asyncio.get_event_loop()
+    session = await loop.run_in_executor(
+        None, 
+        _create_session, 
+        body.num_hosts, 
+        body.max_steps, 
+        body.scenario
+    )
     return _serialize(
         {
             "simulation_id": session["simulation_id"],
@@ -837,22 +1111,21 @@ async def websocket_simulation(websocket: WebSocket, simulation_id: str):
                 session["done"] = False
                 session["history"] = []
                 session["alerts"] = []
+                session["integration_events"] = []
                 session["playbooks"] = []
                 session["cumulative_rewards"] = {"red": 0.0, "blue": 0.0}
                 session["last_rewards"] = {"red": 0.0, "blue": 0.0}
                 session["autonomy_budget"] = _new_budget_state()
                 session["contest_controller"] = ContestController(session["env"].num_hosts)
+                session["kill_chain_tracker"] = KillChainTracker(
+                    red_model=app_state.get("red_model"),
+                    env=session["env"],
+                )
                 session["forced_red_action"] = None
                 session["latest_pipeline"] = None
                 session["latest_briefing"] = None
                 session["siem_context"] = None
-                if app_state.get("siem_seed"):
-                    _apply_siem_seed(session)
-                    if session["alerts"]:
-                        pipeline_state = session["latest_pipeline"] or build_pipeline_state(session, app_state["training_metrics"])
-                        session["latest_pipeline"] = pipeline_state
-                        _register_playbooks(session, pipeline_state, session["alerts"])
-                        session["latest_briefing"] = build_battle_briefing(session)
+                # siem_seed is consumed on first use (popped), no need to re-apply
                 init_message = build_init_message(session)
                 await app_state["connection_manager"].send_json(simulation_id, _serialize(init_message))
             elif command in {"auto", "pause"}:
@@ -869,7 +1142,7 @@ async def websocket_simulation(websocket: WebSocket, simulation_id: str):
                     {"type": "error", "message": f"Unknown command: {command}", "recoverable": True},
                 )
     except WebSocketDisconnect:
-        app_state["connection_manager"].disconnect(simulation_id)
+        app_state["connection_manager"].disconnect(simulation_id, websocket)
     except HTTPException as exc:
         await app_state["connection_manager"].send_json(
             simulation_id,

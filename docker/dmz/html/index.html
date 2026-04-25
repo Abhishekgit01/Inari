@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>DMZ Node</title></head>
+<body style="background:#0a1628;color:#4dd8ff;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+<div style="text-align:center">
+<h1>🛡️ DMZ NODE</h1>
+<p id="info">Zone: DMZ | Status: Running</p>
+</div>
+<script>
+const label = new URLSearchParams(location.search).get('label') || document.title;
+document.getElementById('info').textContent = `Label: ${label} | Zone: DMZ | Status: Running`;
+</script>
+</body>
+</html>

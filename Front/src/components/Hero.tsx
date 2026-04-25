@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Play } from "lucide-react";
+import { ArrowUpRight, Play } from "lucide-react";
 
 export default function Hero() {
   return (
@@ -16,19 +16,29 @@ export default function Hero() {
           transition={{ duration: 0.6 }}
           className="mt-24"
         >
-          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8 text-slate-900">
-            Enterprise-grade <span className="text-blue-600">runtime</span><br />
-            <span className="text-blue-600">security</span> for genAI applications
+          <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8 text-white">
+            A live <span className="text-cyan-300">cyber defense</span><br />
+            product you can actually explain
           </h1>
           
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-12 leading-relaxed">
-            Real-time guardrails for LLMs and AI agents. Monitor usage, detect abuse, and mitigate threats live.
+          <p className="text-xl text-slate-200/85 max-w-3xl mx-auto mb-12 leading-relaxed">
+            Inari AI simulates red-vs-blue attacks, shows detections on a live network map,
+            estimates breach pressure, and generates response playbooks. The next real product move is
+            continuous ingestion through connectors, webhooks, streams, telemetry, SOAR, and SSO.
           </p>
 
-          <div className="flex justify-center mb-24">
-            <button className="bg-black text-white px-10 py-4 rounded-full text-lg font-bold hover:bg-slate-800 transition-all transform hover:scale-105">
-              Get a demo
+          <div className="flex flex-col items-center justify-center gap-4 mb-24 sm:flex-row">
+            <button className="bg-black text-white px-10 py-4 rounded-full text-lg font-bold hover:bg-slate-800 transition-all transform hover:scale-105 inline-flex items-center gap-3">
+              <Play size={18} />
+              Open live demo
             </button>
+            <a
+              href="/features"
+              className="bg-white/80 text-slate-900 px-10 py-4 rounded-full text-lg font-bold hover:bg-white transition-all transform hover:scale-105 inline-flex items-center gap-3 no-underline"
+            >
+              <ArrowUpRight size={18} />
+              See Use Cases
+            </a>
           </div>
         </motion.div>
 
@@ -43,7 +53,7 @@ export default function Hero() {
             <video 
               controls 
               className="w-full h-full object-cover"
-              title="Inari Dashboard Demo"
+              title="Inari AI Demo"
             >
               <source src="/demo.mp4" type="video/mp4" />
               Your browser does not support the video tag.

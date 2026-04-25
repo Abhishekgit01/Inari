@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Radar, ShieldCheck, Terminal, Fingerprint, Zap } from "lucide-react";
+import { Radar, ShieldCheck, Terminal, GitBranch, ClipboardList } from "lucide-react";
 
 export default function Capabilities() {
   return (
@@ -10,7 +10,7 @@ export default function Capabilities() {
         <div className="mb-16">
           <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">Core Capabilities</h2>
           <p className="text-on-surface-variant text-lg max-w-2xl">
-            Precision engineered modules that work in concert to secure your entire digital footprint from edge to core.
+            These are the capabilities the current repo actually demonstrates today, without pretending to be more mature than it is.
           </p>
         </div>
 
@@ -21,9 +21,9 @@ export default function Capabilities() {
             className="md:col-span-3 glass-card ghost-border p-10 rounded-3xl flex flex-col justify-end transition-all"
           >
             <Radar className="text-secondary mb-8" size={48} />
-            <h3 className="text-2xl font-bold text-white mb-3">Predictive Pulse</h3>
+            <h3 className="text-2xl font-bold text-white mb-3">Live Attack Storytelling</h3>
             <p className="text-on-surface-variant leading-relaxed">
-              AI-driven forecasting that anticipates attack vectors before they manifest, analyzing historical patterns and global threat intelligence.
+              A WebSocket-driven war room that visualizes host risk, alerts, and battle progression as the red and blue agents act.
             </p>
           </motion.div>
 
@@ -40,32 +40,32 @@ export default function Capabilities() {
               </div>
             </div>
             <div>
-              <h3 className="text-2xl font-bold text-white mb-3">Self-Healing Assets</h3>
+              <h3 className="text-2xl font-bold text-white mb-3">Explainable Detection Layers</h3>
               <p className="text-on-surface-variant leading-relaxed">
-                Automatically reconfigures network topology and instance state to isolate detected malware within seconds.
+                The detection stack exposes threat labels, confidence, MITRE mappings, and false-positive indicators instead of asking users to trust a black box.
               </p>
             </div>
           </motion.div>
 
-          {/* API Mesh Integrity */}
+          {/* Threat Pipeline */}
           <div className="md:col-span-2 bg-surface-container-low p-8 rounded-3xl flex flex-col hover:bg-surface-container-high transition-all">
             <Terminal className="text-tertiary mb-auto" size={32} />
-            <h3 className="text-xl font-bold text-white mt-6">API Mesh Integrity</h3>
-            <p className="text-sm text-on-surface-variant mt-2">Zero-trust validation for every microservice interaction.</p>
+            <h3 className="text-xl font-bold text-white mt-6">Threat Pipeline</h3>
+            <p className="text-sm text-on-surface-variant mt-2">Intent vectors, shadow execution, attack-graph paths, and autonomy budget visualizations.</p>
           </div>
 
-          {/* Identity Guard */}
+          {/* Attack Graph */}
           <div className="md:col-span-2 bg-surface-container-low p-8 rounded-3xl flex flex-col hover:bg-surface-container-high transition-all">
-            <Fingerprint className="text-primary mb-auto" size={32} />
-            <h3 className="text-xl font-bold text-white mt-6">Identity Guard</h3>
-            <p className="text-sm text-on-surface-variant mt-2">Behavioral biometric analysis to detect session hijacking.</p>
+            <GitBranch className="text-primary mb-auto" size={32} />
+            <h3 className="text-xl font-bold text-white mt-6">Attack Graph + Kill Chain</h3>
+            <p className="text-sm text-on-surface-variant mt-2">Trace likely attacker movement, see breach countdown pressure, and surface crown-jewel exposure.</p>
           </div>
 
-          {/* Instant Remediation */}
+          {/* Playbooks */}
           <div className="md:col-span-2 bg-surface-container-low p-8 rounded-3xl flex flex-col hover:bg-surface-container-high transition-all border-l-4 border-secondary">
-            <Zap className="text-secondary mb-auto" size={32} />
-            <h3 className="text-xl font-bold text-white mt-6">Instant Remediation</h3>
-            <p className="text-sm text-on-surface-variant mt-2">One-click incident resolution for complex threats.</p>
+            <ClipboardList className="text-secondary mb-auto" size={32} />
+            <h3 className="text-xl font-bold text-white mt-6">Operator Playbooks</h3>
+            <p className="text-sm text-on-surface-variant mt-2">Generate response steps from active alerts so the product ends with an action plan, not just a warning.</p>
           </div>
         </div>
       </div>

@@ -29,7 +29,7 @@ export function AuthPage({ onAuthenticated, onBack }: AuthPageProps) {
         <h1>Authenticate before entering the command deck.</h1>
         <p>
           This gate keeps the website flow intact while making the live product feel like a protected analyst surface.
-          Sign in with a work email and we&apos;ll unlock the full CyberGuardian runtime.
+          Sign in with a work email and we&apos;ll unlock the full Inari runtime.
         </p>
 
         <div className="auth-feature-list">

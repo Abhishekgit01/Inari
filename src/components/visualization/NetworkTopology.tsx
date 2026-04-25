@@ -27,6 +27,23 @@ const NODE_RADIUS = 22;
 
 const zoneOrder: Array<NetworkNode['type']> = ['internet', 'dmz', 'app_server', 'db_server', 'workstation'];
 
+// ── Zone color system (clear, accessible, high-contrast) ────────────────────
+const ZONE_COLORS: Record<string, { bg: string; border: string; label: string; tag: string }> = {
+  dmz:         { bg: 'rgba(0,180,216,0.06)',  border: 'rgba(0,180,216,0.25)',  label: '#00b4d8', tag: 'DMZ' },
+  app_server:  { bg: 'rgba(255,165,0,0.06)',  border: 'rgba(255,165,0,0.25)',  label: '#ffa500', tag: 'APPLICATION' },
+  db_server:   { bg: 'rgba(190,80,255,0.06)', border: 'rgba(190,80,255,0.25)', label: '#be50ff', tag: 'DATABASE' },
+  workstation: { bg: 'rgba(0,255,136,0.06)',  border: 'rgba(0,255,136,0.25)',  label: '#00ff88', tag: 'WORKSTATION' },
+  internet:    { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.12)', label: '#ffffff', tag: 'INTERNET' },
+};
+
+const ZONE_LABELS: Record<string, string> = {
+  dmz: 'DMZ — Perimeter',
+  app_server: 'Application Servers',
+  db_server: 'Databases',
+  workstation: 'Workstations & Users',
+  internet: 'Internet',
+};
+
 const edgeStyle = (edge: NetworkEdge) => {
   if (!edge.is_active) {
     return { stroke: 'rgba(88, 102, 129, 0.55)', width: 1.2, dash: '8 10' };
@@ -116,18 +133,31 @@ export function NetworkTopology({
             if (!zoneNodes.length) {
               return null;
             }
+            const zc = ZONE_COLORS[type] || ZONE_COLORS.internet;
+            const minY = Math.min(...zoneNodes.map((n) => n.y));
+            const maxY = Math.max(...zoneNodes.map((n) => n.y));
+            const padY = 36;
             return (
               <g key={type}>
-                <line
-                  stroke="rgba(77, 216, 255, 0.08)"
-                  strokeDasharray="6 10"
-                  x1={80}
-                  x2={width - 80}
-                  y1={zoneNodes[0].y}
-                  y2={zoneNodes[0].y}
+                {/* Zone background band */}
+                <rect
+                  fill={zc.bg}
+                  height={maxY - minY + padY * 2}
+                  rx={8}
+                  stroke={zc.border}
+                  strokeWidth={1}
+                  width={width - 120}
+                  x={60}
+                  y={minY - padY}
                 />
-                <text className="ops-display" fill="rgba(125,211,252,0.45)" fontSize="11" x={80} y={zoneNodes[0].y - 14}>
-                  {type.replace('_', ' ').toUpperCase()}
+                {/* Zone label with tag */}
+                <text className="ops-display" fill={zc.label} fontSize="10" fontWeight="600" x={72} y={minY - padY + 14}>
+                  {ZONE_LABELS[type] || type.replace('_', ' ').toUpperCase()}
+                </text>
+                {/* Zone tag badge */}
+                <rect fill={zc.label} height="14" rx={3} width={zc.tag.length * 7 + 12} x={72} y={minY - padY + 20} />
+                <text fill="#0a1628" fontSize="8" fontWeight="700" x={78} y={minY - padY + 30}>
+                  {zc.tag}
                 </text>
               </g>
             );
@@ -218,6 +248,36 @@ export function NetworkTopology({
             width={width}
           />
         ) : null}
+
+        {/* ── Legend Panel ─────────────────────────────────────── */}
+        <g transform={`translate(${width - 180}, 12)`}>
+          <rect fill="rgba(8,14,24,0.92)" height={148} rx={8} stroke="rgba(255,255,255,0.1)" strokeWidth={1} width={172} />
+          <text fill="rgba(255,255,255,0.7)" fontSize="9" fontWeight="600" x={10} y={16}>LEGEND</text>
+
+          {/* Zone colors */}
+          {['dmz', 'app_server', 'db_server', 'workstation'].map((zone, i) => {
+            const zc = ZONE_COLORS[zone];
+            return (
+              <g key={zone} transform={`translate(10, ${28 + i * 16})`}>
+                <rect fill={zc.label} height={8} rx={2} width={8} />
+                <text fill="rgba(255,255,255,0.65)" fontSize={8} x={14} y={8}>{ZONE_LABELS[zone]}</text>
+              </g>
+            );
+          })}
+
+          {/* Edge types */}
+          <line stroke="#ff335f" strokeWidth={2} x1={10} x2={30} y1={100} y2={100} />
+          <text fill="rgba(255,255,255,0.65)" fontSize={8} x={34} y={103}>Attack / Exfil</text>
+
+          <line stroke="#ff9f43" strokeDasharray="6 4" strokeWidth={2} x1={10} x2={30} y1={114} y2={114} />
+          <text fill="rgba(255,255,255,0.65)" fontSize={8} x={34} y={117}>Lateral Move</text>
+
+          <line stroke="#4dd8ff" strokeWidth={1.5} x1={10} x2={30} y1={128} y2={128} />
+          <text fill="rgba(255,255,255,0.65)" fontSize={8} x={34} y={131}>Normal Traffic</text>
+
+          {/* Node shapes */}
+          <text fill="rgba(255,255,255,0.45)" fontSize={7} x={10} y={145}>⬡ DMZ/DB  ○ App/WS</text>
+        </g>
       </svg>
 
       <BattleParticleCanvas events={contestEvents} height={height} nodePositions={nodePositions} width={width} />

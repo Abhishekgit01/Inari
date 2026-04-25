@@ -19,7 +19,7 @@ export default function BattleScoreboard({ scoreboard, step, maxSteps, episodeId
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
         {/* Episode info */}
         <div className="flex items-center gap-3">
-          <span className="ops-display text-sm tracking-widest">CYBERGUARDIAN AI</span>
+          <span className="ops-display text-sm tracking-widest">INARI AI</span>
           <span className="ops-muted text-xs">
             {episodeId} · STEP {step}/{maxSteps}
           </span>

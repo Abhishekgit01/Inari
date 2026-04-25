@@ -1,6 +1,12 @@
-# These tokens are obfuscated via runtime string concatenation
-# This prevents GitHub's automated secret-scanning bots from instantly revoking the tokens entirely
-# prior to the live Hackathon demonstration.
+from __future__ import annotations
 
-HF_API_TOKEN = "hf_gjNPGSBz" + "UBmcaFosWP" + "ciHxgIudb" + "mxZeGzx"
-NGROK_AUTHTOKEN = "3Bu4qc8W" + "uEDIf6apBm5" + "7sEetJRI_" + "5Wtthd6EBzn" + "2HMhqB2khz"
+import os
+
+
+def _read_secret(name: str) -> str:
+    return os.getenv(name, "").strip()
+
+
+# Secrets must come from the environment at runtime.
+HF_API_TOKEN = _read_secret("HF_API_TOKEN")
+NGROK_AUTHTOKEN = _read_secret("NGROK_AUTHTOKEN")

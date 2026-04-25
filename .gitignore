@@ -215,3 +215,4 @@ coverage/
 *.log
 .env*
 !.env.example
+codebase_context_full.md\nlogs.md\ndemo.mov\ncontext_dumper.py\n.codex/\n.kiro/\ntensorboard_metrics*\ntemp_metrics/\ncolab_*.ipynb\napt_siem_logs.csv

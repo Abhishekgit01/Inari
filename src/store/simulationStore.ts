@@ -11,6 +11,8 @@ import type {
   DecisionScores,
   GiskardReport,
   GiskardStatus,
+  IntegrationEventMessage,
+  IntegrationFeedEvent,
   InitMessage,
   KillChainState,
   NetworkGraphState,
@@ -23,8 +25,14 @@ import type {
   TrainingMetrics,
 } from '../lib/ops-types';
 
-type StreamMessage = InitMessage | StepMessage;
+type StreamMessage = InitMessage | StepMessage | IntegrationEventMessage;
 type ThreatType = ThreatAlert['threat_type'];
+const ENTERPRISE_API_KEY_STORAGE = 'athernex_api_key';
+
+const getEnterpriseApiKey = () =>
+  typeof window === 'undefined'
+    ? 'ath_local_admin'
+    : window.localStorage.getItem(ENTERPRISE_API_KEY_STORAGE) || 'ath_local_admin';
 
 export interface TelemetryLog {
   id: string;
@@ -64,6 +72,7 @@ interface SimulationState {
   giskardReports: GiskardReport[];
   killChain: KillChainState | null;
   aptAttribution: AptMatch[];
+  integrationEvents: IntegrationFeedEvent[];
   stepHistory: StepMessage[];
   autoStep: boolean;
   autoStepInterval: number | null;
@@ -84,6 +93,7 @@ interface SimulationState {
   loadGiskardReports: () => Promise<void>;
   runGiskardScan: (mode: 'blue' | 'red') => Promise<void>;
   uploadSIEMFeed: (file: File) => Promise<void>;
+  ingestUrlFeed: (url: string, vendor?: string) => Promise<void>;
   viewMode: '2d' | '3d';
   selectedNodeId: number | null;
   setViewMode: (mode: '2d' | '3d') => void;
@@ -135,7 +145,7 @@ const alertTone = (alert: ThreatAlert): TelemetryLog['tone'] => {
 const buildTelemetryEntries = (payload: StepMessage): TelemetryLog[] => {
   const entries: TelemetryLog[] = [
     {
-      id: `red-${payload.step}-${payload.red_action.action_name}-${payload.red_action.target_host_id}`,
+      id: `red-${payload.step}-${payload.red_action.action_name}-${payload.red_action.target_host_id}-${Math.random().toString(36).substring(2,6)}`,
       team: 'red',
       type: payload.red_action.action_name,
       message: `${payload.red_action.action_name.replace(/_/g, ' ')} ${payload.red_action.success ? 'landed on' : 'stalled at'} ${payload.red_action.target_host_label}`,
@@ -198,7 +208,50 @@ const applyStreamPayload = (
       payload.type === 'step'
         ? [...buildTelemetryEntries(payload), ...state.logs].slice(0, 96)
         : state.logs,
+    integrationEvents:
+      payload.type === 'init'
+        ? payload.integration_events || state.integrationEvents
+        : state.integrationEvents,
   }));
+};
+
+const buildIntegrationTelemetryEntries = (payload: IntegrationEventMessage): TelemetryLog[] =>
+  payload.events.slice(0, 8).map((event) => ({
+    id: `external-${event.id}`,
+    team: 'system',
+    type: `${event.vendor}:${event.threat_type}`,
+    message: `${event.vendor.toUpperCase()} ${payload.source.replace(/_/g, ' ')} flagged ${event.host_label} for ${event.threat_type.replace(/_/g, ' ')}`,
+    step: payload.step,
+    tone:
+      event.severity === 'critical' || event.severity === 'high'
+        ? 'critical'
+        : event.severity === 'medium'
+          ? 'warning'
+          : 'info',
+  }));
+
+const applyIntegrationPayload = (
+  payload: IntegrationEventMessage,
+  set: (partial: Partial<SimulationState> | ((state: SimulationState) => Partial<SimulationState>)) => void,
+) => {
+  set((state) => {
+    const knownIds = new Set(state.integrationEvents.map((event) => event.id));
+    const newEvents = payload.events.filter((event) => !knownIds.has(event.id));
+    return {
+      simulationId: payload.simulation_id || state.simulationId,
+      network: payload.network,
+      step: payload.step ?? state.step,
+      phase: payload.phase ?? state.phase,
+      pipeline: payload.pipeline ?? state.pipeline,
+      briefing: payload.briefing ?? state.briefing,
+      killChain: payload.kill_chain ?? state.killChain,
+      aptAttribution: payload.apt_attribution ?? state.aptAttribution,
+      scoreboard: payload.scoreboard ?? state.scoreboard,
+      alerts: mergeById(state.alerts, payload.new_alerts).slice(0, 32),
+      integrationEvents: [...newEvents, ...state.integrationEvents].slice(0, 36),
+      logs: [...buildIntegrationTelemetryEntries(payload), ...state.logs].slice(0, 96),
+    };
+  });
 };
 
 const initialState = {
@@ -229,6 +282,7 @@ const initialState = {
   giskardReports: [] as GiskardReport[],
   killChain: null as KillChainState | null,
   aptAttribution: [] as AptMatch[],
+  integrationEvents: [] as IntegrationFeedEvent[],
   stepHistory: [] as StepMessage[],
   autoStep: false,
   autoStepInterval: null as number | null,
@@ -242,7 +296,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   ...initialState,
   setViewMode: (mode) => set({ viewMode: mode }),
   setSelectedNodeId: (id) => set({ selectedNodeId: id }),
-  apiBaseUrl: import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://inari-80s3.onrender.com' : 'http://127.0.0.1:8001'),
+  apiBaseUrl: import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8001'),
 
   setApiBaseUrl: (url: string) => {
     const cleaned = url.trim().replace(/\/$/, '');
@@ -284,6 +338,13 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
             if ((payload as StreamMessage).type === 'step') {
               set((state) => ({ stepHistory: [...state.stepHistory, payload as StepMessage] }));
             }
+            return;
+          }
+          if (payload.type === 'integration_event') {
+            applyIntegrationPayload(payload as IntegrationEventMessage, set);
+            toast.success(payload.message || `${payload.vendor} events bridged into the War Room`, {
+              id: `integration-${payload.ingested_at}`,
+            });
             return;
           }
           if (payload.type === 'status' && payload.message) {
@@ -354,10 +415,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         if (int) window.clearInterval(int);
         set({ autoStep: false, autoStepInterval: null });
       }
-    }, 1500);
+    }, 3000);
 
     set({ autoStep: true, autoStepInterval: interval });
-    toast.success('Auto-step started (1.5s interval)');
+    toast.success('Auto-step started (3s interval — one attack per tick)');
   },
 
   replayStep: (stepIndex: number) => {
@@ -482,6 +543,39 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     } catch (error) {
       console.error(error);
       toast.error('Unable to upload SIEM feed. Ensure the backend supports /api/simulation/upload-siem.');
+    }
+  },
+
+  ingestUrlFeed: async (url: string, vendor = 'generic') => {
+    try {
+      const response = await apiClient.post(
+        '/api/ingest/url',
+        { url, vendor },
+        {
+          headers: {
+            'X-API-Key': getEnterpriseApiKey(),
+          },
+        },
+      );
+      const result = response.data as {
+        event_count?: number;
+        bridge?: { bridged?: boolean };
+        security_report?: { security_score?: number };
+      };
+      const securityNote = result.security_report?.security_score !== undefined
+        ? ` · URL score ${result.security_report.security_score}/100`
+        : '';
+      toast.success(`Fetched ${result.event_count || 0} events from remote URL${securityNote}`);
+      if (!result.bridge?.bridged) {
+        const existingSocket = get()._socket;
+        if (existingSocket) {
+          existingSocket.close();
+        }
+        await get().startSimulation();
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to ingest the remote URL feed.');
     }
   },
 }));

@@ -1,10 +1,10 @@
 import axios from 'axios';
 
 const isProd = import.meta.env.PROD;
-const baseURL = import.meta.env.VITE_API_URL || (isProd ? 'https://inari-80s3.onrender.com' : 'http://127.0.0.1:8001');
+const baseURL = import.meta.env.VITE_API_URL || (isProd ? '/api' : 'http://127.0.0.1:8001');
 export const apiClient = axios.create({
   baseURL,
-  timeout: 5000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -60,7 +60,7 @@ export function ProductTopbar({
   return (
     <header className="top-status-bar">
       <div>
-        <div className="ops-display text-[0.58rem] text-secondary/70">CYBERGUARDIAN AI</div>
+        <div className="ops-display text-[0.58rem] text-secondary/70">INARI AI</div>
         <div className="topbar-title-row">
           <div className="mt-1 text-2xl font-semibold tracking-[0.08em] text-white">{meta.title}</div>
           <div className="ops-label text-[0.52rem] text-secondary/70">{meta.kicker}</div>

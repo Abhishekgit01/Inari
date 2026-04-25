@@ -1,0 +1,29 @@
+[
+  {
+    "host": "WEB-01",
+    "type": "brute_force",
+    "severity": "high",
+    "source": "198.51.100.24",
+    "target": "10.0.0.11",
+    "threat_type": "brute_force",
+    "alert_score": 0.73
+  },
+  {
+    "host": "APP-02",
+    "type": "lateral_movement",
+    "severity": "critical",
+    "source": "10.0.0.11",
+    "target": "10.0.1.18",
+    "threat_type": "lateral_movement",
+    "alert_score": 0.9
+  },
+  {
+    "host": "DB-01",
+    "type": "data_exfiltration",
+    "severity": "critical",
+    "source": "10.0.1.18",
+    "target": "203.0.113.77",
+    "threat_type": "data_exfiltration",
+    "alert_score": 0.96
+  }
+]

@@ -15,14 +15,14 @@ export default function Navbar() {
         </a>
 
         <div className="hidden md:flex items-center gap-8">
-          <NavLink label="Features" href="/features" />
+          <NavLink label="Use Cases" href="/features" />
           <NavLink label="Technology" href="/technology" />
           <NavLink label="Blogs" href="/blogs" />
           <NavLink label="About Us" href="/about" />
         </div>
 
         <a href="/login" className="bg-slate-900 text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-slate-800 transition-colors no-underline">
-          Login / Sign Up
+          Open Console
         </a>
       </motion.nav>
     </div>

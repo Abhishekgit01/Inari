@@ -28,8 +28,9 @@ export function SiteNavbar() {
         </a>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-          <a href="/features" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>Features</a>
+          <a href="/features" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>Use Cases</a>
           <a href="/technology" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>Technology</a>
+          <a href="/threat-report" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>Field Report</a>
           <a href="/blogs" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>Blogs</a>
           <a href="/about" style={{ textDecoration: 'none', fontSize: 13, fontWeight: 500, color: 'rgba(255,255,255,0.7)', transition: 'color 150ms', fontFamily: '"Inter", sans-serif' }} onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.7)'; }}>About Us</a>
         </div>
@@ -51,7 +52,7 @@ export function SiteNavbar() {
           onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
-          Get a demo
+          Open Console
         </a>
       </motion.nav>
     </div>

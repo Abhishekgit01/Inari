@@ -11,11 +11,15 @@ export type AppRoute =
   | '/attack-graph'
   | '/playbooks'
   | '/training'
+  | '/url-security'
+  | '/docker'
   | '/features'
   | '/technology'
   | '/integrations'
+  | '/threat-report'
   | '/blogs'
-  | '/about';
+  | '/about'
+  | '/pricing';
 
 const VALID_ROUTES = new Set<AppRoute>([
   '/',
@@ -28,11 +32,15 @@ const VALID_ROUTES = new Set<AppRoute>([
   '/attack-graph',
   '/playbooks',
   '/training',
+  '/url-security',
+  '/docker',
   '/features',
   '/technology',
   '/integrations',
+  '/threat-report',
   '/blogs',
   '/about',
+  '/pricing',
 ]);
 
 const normalizeRoute = (value: string): AppRoute => {

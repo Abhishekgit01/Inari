@@ -142,15 +142,56 @@
   .ops-card {
     position: relative;
     overflow: hidden;
-    background:
-      linear-gradient(180deg, rgba(25, 28, 31, 0.72), rgba(12, 14, 18, 0.86)),
-      radial-gradient(circle at top, rgba(176, 198, 255, 0.06), transparent 42%);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow:
-      0 22px 64px rgba(0, 0, 0, 0.34),
-      inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(18px);
+    background: linear-gradient(135deg, rgba(25, 28, 31, 0.65), rgba(12, 14, 18, 0.55));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(24px);
+    transition: transform 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
+  }
+
+  .ops-card:hover {
+    transform: translateY(-2px) scale(1.005);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* Bento Grid Constants */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.25rem;
+    grid-auto-flow: dense;
+  }
+
+  .bento-grid-dense {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  .bento-cell-span-2 {
+    grid-column: span 2;
+  }
+  
+  @media (max-width: 1024px) {
+    .bento-cell-span-2 {
+      grid-column: span 1;
+    }
+  }
+
+  .bento-glass {
+    border-radius: 24px;
+    background: rgba(17, 20, 23, 0.45);
+    backdrop-filter: blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    position: relative;
+    transition: all 400ms cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  .bento-glass:hover {
+    box-shadow: 0 26px 48px rgba(0, 0, 0, 0.5), 0 0 40px rgba(20, 209, 255, 0.05);
+    border-color: rgba(20, 209, 255, 0.2);
   }
 
   .ops-display {
@@ -630,12 +671,18 @@
   .radar-shell {
     position: relative;
     border: 1px solid rgba(20, 209, 255, 0.16);
-    border-radius: 24px;
+    border-radius: 20px;
     background:
       radial-gradient(circle at center, rgba(20, 209, 255, 0.12), transparent 58%),
-      linear-gradient(180deg, rgba(9, 17, 26, 0.92), rgba(3, 8, 14, 0.98));
+      linear-gradient(180deg, rgba(9, 17, 26, 0.7), rgba(3, 8, 14, 0.8));
     padding: 1rem;
     overflow: hidden;
+    transition: all 300ms ease;
+  }
+
+  .radar-shell:hover {
+    border-color: rgba(20, 209, 255, 0.35);
+    box-shadow: inset 0 0 20px rgba(20, 209, 255, 0.1);
   }
 
   .radar-shell::after {

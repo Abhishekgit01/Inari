@@ -6,25 +6,29 @@ import { AttackGraphPage } from './pages/AttackGraphPage';
 import { LivePage } from './pages/LivePage';
 import { Login, type StoredAuth } from './pages/Login';
 import { Onboarding } from './pages/Onboarding';
+import { PricingPage } from './pages/PricingPage';
 import { PipelinePage } from './pages/PipelinePage';
 import { PlaybooksPage } from './pages/PlaybooksPage';
-import { SimulationPage } from './pages/SimulationPage';
 import { TrainingPage } from './pages/TrainingPage';
+import { UrlSecurityPage } from './pages/UrlSecurityPage';
 import { WebsitePage } from './pages/WebsitePage';
 import { FeaturesPage } from './pages/FeaturesPage';
 import { TechnologyPage } from './pages/TechnologyPage';
 import { BlogsPage } from './pages/BlogsPage';
 import { AboutPage } from './pages/AboutPage';
 import { IntegrationsPage } from './pages/IntegrationsPage';
+import { DockerPage } from './pages/DockerPage';
+import { ThreatReportPage } from './pages/ThreatReportPage';
 import { useSimulationStore } from './store/simulationStore';
 
 const PRODUCT_ROUTES = [
   '/live',
-  '/simulation',
   '/pipeline',
   '/attack-graph',
   '/playbooks',
   '/training',
+  '/url-security',
+  '/docker',
   '/integrations',
 ] as const satisfies readonly AppRoute[];
 type ProductRoute = (typeof PRODUCT_ROUTES)[number];
@@ -73,13 +77,13 @@ function App() {
       return;
     }
 
-    if ((route === '/login' || route === '/onboarding') && !isAuthenticated && route === '/onboarding') {
+    if ((route === '/login' || route === '/onboarding' || route === '/pricing') && !isAuthenticated && route !== '/login') {
       navigate('/login');
       return;
     }
 
     if (route === '/login' && isAuthenticated) {
-      navigate(authIdentity?.onboarded ? '/live' : '/onboarding');
+      navigate('/pricing');
       return;
     }
 
@@ -140,10 +144,12 @@ function App() {
   if (route === '/blogs') {
     return <BlogsPage />;
   }
+  if (route === '/threat-report') {
+    return <ThreatReportPage />;
+  }
   if (route === '/about') {
     return <AboutPage />;
   }
-
   if ((route === '/login' || route === '/auth') && isAuthenticated) {
     return null;
   }
@@ -172,11 +178,20 @@ function App() {
         <Login
           onAuthenticated={(auth) => {
             setAuthIdentity(auth);
-            navigate(auth.onboarded ? '/live' : '/onboarding');
+            navigate('/pricing');
           }}
           onBack={() => navigate('/')}
         />
       </>
+    );
+  }
+
+  if (route === '/pricing' && authIdentity) {
+    return (
+      <PricingPage 
+        auth={authIdentity} 
+        onProceed={() => navigate(authIdentity.onboarded ? '/live' : '/onboarding')} 
+      />
     );
   }
 
@@ -238,8 +253,6 @@ function renderRoute(route: ProductRoute) {
   switch (route) {
     case '/live':
       return <LivePage />;
-    case '/simulation':
-      return <SimulationPage />;
     case '/pipeline':
       return <PipelinePage />;
     case '/attack-graph':
@@ -248,8 +261,12 @@ function renderRoute(route: ProductRoute) {
       return <PlaybooksPage />;
     case '/training':
       return <TrainingPage />;
+    case '/url-security':
+      return <UrlSecurityPage />;
     case '/integrations':
       return <IntegrationsPage />;
+    case '/docker':
+      return <DockerPage />;
     default:
       return <LivePage />;
   }

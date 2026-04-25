@@ -29,9 +29,9 @@ export default function ThreatRadar({ briefing }: { briefing: BattleBriefing | n
         <div className="status-pill status-pill-live">{briefing.last_updated_step === 0 ? 'READY' : `STEP ${briefing.last_updated_step}`}</div>
       </div>
 
-      <div className="mt-3 grid gap-3 xl:grid-cols-[280px,minmax(0,1fr)]">
-        <div className="radar-shell">
-          <svg className="w-full" viewBox={`0 0 ${size} ${size}`}>
+      <div className="mt-3 grid gap-3 lg:grid-cols-[260px,minmax(0,1fr)] items-center">
+        <div className="radar-shell flex justify-center">
+          <svg className="w-full max-w-[280px]" viewBox={`0 0 ${size} ${size}`}>
             <defs>
               <radialGradient id="radar-core" cx="50%" cy="50%" r="65%">
                 <stop offset="0%" stopColor="rgba(20,209,255,0.24)" />
@@ -111,10 +111,10 @@ export default function ThreatRadar({ briefing }: { briefing: BattleBriefing | n
                   </div>
                   <div className="ops-data text-base" style={{ color: zone.color }}>{zone.risk_percent}%</div>
                 </div>
-                <div className="meter-track mt-3 h-2">
+                <div className="meter-track mt-2 h-2">
                   <div className="meter-fill" style={{ width: `${zone.risk_percent}%`, background: `linear-gradient(90deg, ${zone.color}44, ${zone.color})` }} />
                 </div>
-                <p className="mt-2 text-xs text-[var(--text-secondary)]" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{zone.reason}</p>
+                <p className="mt-2 text-[10px] text-[var(--text-secondary)]" style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{zone.reason}</p>
               </div>
             ))}
           </div>
